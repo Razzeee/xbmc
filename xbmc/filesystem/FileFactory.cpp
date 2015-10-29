@@ -56,6 +56,7 @@
 #if defined(TARGET_ANDROID)
 #include "APKFile.h"
 #endif
+#include "XbtFile.h"
 #include "ZipFile.h"
 #ifdef HAS_FILESYSTEM_RAR
 #include "RarFile.h"
@@ -80,8 +81,6 @@
 #include "SpecialProtocolFile.h"
 #include "MultiPathFile.h"
 #include "UDFFile.h"
-#include "HDHomeRunFile.h"
-#include "SlingboxFile.h"
 #include "ImageFile.h"
 #include "ResourceFile.h"
 #include "Application.h"
@@ -107,7 +106,7 @@ IFile* CFileFactory::CreateLoader(const std::string& strFileName)
 
 IFile* CFileFactory::CreateLoader(const CURL& url)
 {
-  if (!CWakeOnAccess::Get().WakeUpHost(url))
+  if (!CWakeOnAccess::GetInstance().WakeUpHost(url))
     return NULL;
 
 #if defined(TARGET_ANDROID)
@@ -122,6 +121,7 @@ IFile* CFileFactory::CreateLoader(const CURL& url)
     CLog::Log(LOGWARNING, "%s - Compiled without non-free, rar support is disabled", __FUNCTION__);
 #endif
   }
+  else if (url.IsProtocol("xbt")) return new CXbtFile();
   else if (url.IsProtocol("musicdb")) return new CMusicDatabaseFile();
   else if (url.IsProtocol("videodb")) return NULL;
   else if (url.IsProtocol("special")) return new CSpecialProtocolFile();
@@ -143,6 +143,11 @@ IFile* CFileFactory::CreateLoader(const CURL& url)
 #if defined(TARGET_ANDROID)
   else if (url.IsProtocol("androidapp")) return new CFileAndroidApp();
 #endif
+  else if (url.IsProtocol("pipe")) return new CPipeFile();
+#ifdef HAVE_LIBBLURAY
+  else if (url.IsProtocol("bluray")) return new CBlurayFile();
+#endif
+  else if (url.IsProtocol("resource")) return new CResourceFile();
 
   bool networkAvailable = g_application.getNetwork().IsAvailable();
   if (networkAvailable)
@@ -156,8 +161,6 @@ IFile* CFileFactory::CreateLoader(const CURL& url)
     else if (url.IsProtocol("sftp") || url.IsProtocol("ssh")) return new CSFTPFile();
 #endif
     else if (url.IsProtocol("shout")) return new CShoutcastFile();
-    else if (url.IsProtocol("hdhomerun")) return new CHomeRunFile();
-    else if (url.IsProtocol("sling")) return new CSlingboxFile();
 #ifdef HAS_FILESYSTEM_SMB
 #ifdef TARGET_WINDOWS
     else if (url.IsProtocol("smb")) return new CWin32SMBFile();
@@ -174,14 +177,9 @@ IFile* CFileFactory::CreateLoader(const CURL& url)
 #ifdef HAS_FILESYSTEM_NFS
     else if (url.IsProtocol("nfs")) return new CNFSFile();
 #endif
-    else if (url.IsProtocol("pipe")) return new CPipeFile();    
 #ifdef HAS_UPNP
     else if (url.IsProtocol("upnp")) return new CUPnPFile();
 #endif
-#ifdef HAVE_LIBBLURAY
-    else if (url.IsProtocol("bluray")) return new CBlurayFile();
-#endif
-    else if (url.IsProtocol("resource")) return new CResourceFile();
   }
 
   CLog::Log(LOGWARNING, "%s - %sunsupported protocol(%s) in %s", __FUNCTION__, networkAvailable ? "" : "Network down or ", url.GetProtocol().c_str(), url.GetRedacted().c_str());

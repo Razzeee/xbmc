@@ -87,6 +87,7 @@ public:
     WindowsVersionWin7,         // Windows 7, Windows Server 2008 R2
     WindowsVersionWin8,         // Windows 8, Windows Server 2012
     WindowsVersionWin8_1,       // Windows 8.1
+    WindowsVersionWin10,        // windows 10
     /* Insert new Windows versions here, when they'll be known */
     WindowsVersionFuture = 100  // Future Windows version, not known to code
   };
@@ -94,8 +95,8 @@ public:
   CSysInfo(void);
   virtual ~CSysInfo();
 
-  virtual bool Load(const TiXmlNode *settings);
-  virtual bool Save(TiXmlNode *settings) const;
+  virtual bool Load(const TiXmlNode *settings) override;
+  virtual bool Save(TiXmlNode *settings) const override;
 
   char MD5_Sign[32 + 1];
 
@@ -108,8 +109,12 @@ public:
   static std::string GetOsVersion(void);
   static std::string GetOsPrettyNameWithVersion(void);
   static std::string GetUserAgent();
+  static std::string GetDeviceName();
+  static std::string GetVersion();
+  static std::string GetVersionShort();
+  static std::string GetBuildDate();
+
   bool HasInternet();
-  bool IsAppleTV2();
   bool HasVideoToolBoxDecoder();
   bool IsAeroDisabled();
   bool HasHW3DInterlaced();
@@ -141,9 +146,9 @@ public:
   static std::string GetUsedCompilerNameAndVer(void);
 
 protected:
-  virtual CJob *GetJob() const;
-  virtual std::string TranslateInfo(int info) const;
-  virtual void OnJobComplete(unsigned int jobID, bool success, CJob *job);
+  virtual CJob *GetJob() const override;
+  virtual std::string TranslateInfo(int info) const override;
+  virtual void OnJobComplete(unsigned int jobID, bool success, CJob *job) override;
 
 private:
   CSysData m_info;

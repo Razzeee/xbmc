@@ -29,7 +29,6 @@
 #define ZIP_CACHE_LIMIT 4*1024*1024
 
 using namespace XFILE;
-using namespace std;
 
 CZipFile::CZipFile()
 {
@@ -306,7 +305,7 @@ ssize_t CZipFile::Read(void* lpBuf, size_t uiBufSize)
   {
     uLong iDecompressed = 0;
     uLong prevOut = m_ZStream.total_out;
-    while ((static_cast<size_t>(iDecompressed) < uiBufSize) && ((m_iZipFilePos < mZipItem.csize) || (m_bFlush)))
+    while ((iDecompressed < uiBufSize) && ((m_iZipFilePos < mZipItem.csize) || (m_bFlush)))
     {
       m_ZStream.next_out = (Bytef*)(lpBuf)+iDecompressed;
       m_ZStream.avail_out = static_cast<uInt>(uiBufSize-iDecompressed);
@@ -472,7 +471,7 @@ void CZipFile::DestroyBuffer(void* lpBuffer, int iBufSize)
   m_bFlush = false;
 }
 
-int CZipFile::UnpackFromMemory(string& strDest, const string& strInput, bool isGZ)
+int CZipFile::UnpackFromMemory(std::string& strDest, const std::string& strInput, bool isGZ)
 {
   unsigned int iPos=0;
   int iResult=0;

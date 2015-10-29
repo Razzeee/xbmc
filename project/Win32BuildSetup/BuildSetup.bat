@@ -64,6 +64,7 @@ set WORKSPACE=%CD%\..\..
   
   set EXE= "..\VS2010Express\XBMC\%buildconfig%\%APP_NAME%.exe"
   set PDB= "..\VS2010Express\XBMC\%buildconfig%\%APP_NAME%.pdb"
+  set D3D= "..\VS2010Express\XBMC\%buildconfig%\D3DCompile*.DLL"
   
   :: sets the BRANCH env var
   call getbranch.bat
@@ -187,12 +188,6 @@ set WORKSPACE=%CD%\..\..
   Echo addons\repository.pvr-ios.xbmc.org\>>exclude.txt
   Echo addons\repository.pvr-osx32.xbmc.org\>>exclude.txt
   Echo addons\repository.pvr-osx64.xbmc.org\>>exclude.txt
-  Echo addons\screensaver.rsxs.euphoria\>>exclude.txt
-  Echo addons\screensaver.rsxs.plasma\>>exclude.txt
-  Echo addons\screensaver.rsxs.solarwinds\>>exclude.txt
-  Echo addons\visualization.fishbmc\>>exclude.txt
-  Echo addons\visualization.projectm\>>exclude.txt
-  Echo addons\visualization.glspectrum\>>exclude.txt
   rem Exclude skins as they're copied by their own script
   Echo addons\skin.re-touched\>>exclude.txt
   Echo addons\skin.confluence\>>exclude.txt
@@ -200,6 +195,7 @@ set WORKSPACE=%CD%\..\..
   md BUILD_WIN32\application
 
   xcopy %EXE% BUILD_WIN32\application > NUL
+  xcopy %D3D% BUILD_WIN32\application > NUL
   xcopy ..\..\userdata BUILD_WIN32\application\userdata /E /Q /I /Y /EXCLUDE:exclude.txt > NUL
   copy ..\..\copying.txt BUILD_WIN32\application > NUL
   copy ..\..\LICENSE.GPL BUILD_WIN32\application > NUL

@@ -39,8 +39,6 @@
 #define MYSQL_OK          0
 #define ER_BAD_DB_ERROR   1049
 
-using namespace std;
-
 namespace dbiplus {
 
 //************* MysqlDatabase implementation ***************
@@ -130,7 +128,7 @@ int MysqlDatabase::connect(bool create_new) {
         ciphers.empty() ? NULL : ciphers.c_str());
     }
 
-    if (!CWakeOnAccess::Get().WakeUpHost(host, "MySQL : " + db))
+    if (!CWakeOnAccess::GetInstance().WakeUpHost(host, "MySQL : " + db))
       return DB_CONNECTION_NONE;
 
     // establish connection with just user credentials
@@ -271,17 +269,17 @@ int MysqlDatabase::copy(const char *backup_name) {
     while ( (row=mysql_fetch_row(res)) != NULL )
     {
       // copy the table definition
-      sprintf(sql, "CREATE TABLE %s.%s LIKE %s",
+      sprintf(sql, "CREATE TABLE `%s`.%s LIKE %s",
               backup_name, row[0], row[0]);
 
       if ( (ret=query_with_reconnect(sql)) != MYSQL_OK )
       {
         mysql_free_result(res);
-        throw DbErrors("Can't copy schema for table '%s'\nError: %s", db.c_str(), ret);
+        throw DbErrors("Can't copy schema for table '%s'\nError: %d", row[0], ret);
       }
 
       // copy the table data
-      sprintf(sql, "INSERT INTO %s.%s SELECT * FROM %s",
+      sprintf(sql, "INSERT INTO `%s`.%s SELECT * FROM %s",
               backup_name, row[0], row[0]);
 
       if ( (ret=query_with_reconnect(sql)) != MYSQL_OK )
@@ -326,7 +324,7 @@ int MysqlDatabase::drop_analytics(void) {
   {
     while ( (row=mysql_fetch_row(res)) != NULL )
     {
-      sprintf(sql, "ALTER TABLE %s.%s DROP INDEX %s", db.c_str(), row[0], row[1]);
+      sprintf(sql, "ALTER TABLE `%s`.%s DROP INDEX %s", db.c_str(), row[0], row[1]);
 
       if ( (ret=query_with_reconnect(sql)) != MYSQL_OK )
       {
@@ -351,7 +349,7 @@ int MysqlDatabase::drop_analytics(void) {
     while ( (row=mysql_fetch_row(res)) != NULL )
     {
       /* we do not need IF EXISTS because these views are exist */
-      sprintf(sql, "DROP VIEW %s.%s", db.c_str(), row[0]);
+      sprintf(sql, "DROP VIEW `%s`.%s", db.c_str(), row[0]);
 
       if ( (ret=query_with_reconnect(sql)) != MYSQL_OK )
       {
@@ -375,12 +373,12 @@ int MysqlDatabase::drop_analytics(void) {
   {
     while ( (row=mysql_fetch_row(res)) != NULL )
     {
-      sprintf(sql, "DROP TRIGGER %s.%s", db.c_str(), row[0]);
+      sprintf(sql, "DROP TRIGGER `%s`.%s", db.c_str(), row[0]);
 
       if ( (ret=query_with_reconnect(sql)) != MYSQL_OK )
       {
         mysql_free_result(res);
-        throw DbErrors("Can't create trigger '%s'\nError: %s", row[0], ret);
+        throw DbErrors("Can't create trigger '%s'\nError: %d", row[0], ret);
       }
     }
     mysql_free_result(res);
@@ -420,26 +418,29 @@ long MysqlDatabase::nextid(const char* sname) {
     return DB_UNEXPECTED_RESULT;
   }
   res = mysql_store_result(conn);
-  if (mysql_num_rows(res) == 0)
+  if (res)
   {
-    id = 1;
-    sprintf(sqlcmd,"insert into %s (nextid,seq_name) values (%d,'%s')",seq_table,id,sname);
-    mysql_free_result(res);
-    if ((last_err = query_with_reconnect(sqlcmd)) != 0) return DB_UNEXPECTED_RESULT;
-    return id;
-  }
-  else
-  {
-    MYSQL_ROW row = mysql_fetch_row(res);
-    //id = (int)row[0];
-    id = -1;
-    unsigned long *lengths;
-    lengths = mysql_fetch_lengths(res);
-    CLog::Log(LOGINFO,"Next id is [%.*s] ", (int) lengths[0], row[0]);
-    sprintf(sqlcmd,"update %s set nextid=%d where seq_name = '%s'",seq_table,id,sname);
-    mysql_free_result(res);
-    if ((last_err = query_with_reconnect(sqlcmd)) != 0) return DB_UNEXPECTED_RESULT;
-    return id;
+    if (mysql_num_rows(res) == 0)
+    {
+      id = 1;
+      sprintf(sqlcmd, "insert into %s (nextid,seq_name) values (%d,'%s')", seq_table, id, sname);
+      mysql_free_result(res);
+      if ((last_err = query_with_reconnect(sqlcmd)) != 0) return DB_UNEXPECTED_RESULT;
+      return id;
+    }
+    else
+    {
+      MYSQL_ROW row = mysql_fetch_row(res);
+      //id = (int)row[0];
+      id = -1;
+      unsigned long *lengths;
+      lengths = mysql_fetch_lengths(res);
+      CLog::Log(LOGINFO, "Next id is [%.*s] ", (int)lengths[0], row[0]);
+      sprintf(sqlcmd, "update %s set nextid=%d where seq_name = '%s'", seq_table, id, sname);
+      mysql_free_result(res);
+      if ((last_err = query_with_reconnect(sqlcmd)) != 0) return DB_UNEXPECTED_RESULT;
+      return id;
+    }
   }
   return DB_UNEXPECTED_RESULT;
 }
@@ -509,17 +510,17 @@ bool MysqlDatabase::exists(void) {
 
 // methods for formatting
 // ---------------------------------------------
-string MysqlDatabase::vprepare(const char *format, va_list args)
+std::string MysqlDatabase::vprepare(const char *format, va_list args)
 {
-  string strFormat = format;
-  string strResult = "";
+  std::string strFormat = format;
+  std::string strResult = "";
   char *p;
   size_t pos;
 
   //  %q is the sqlite format string for %s.
   //  Any bad character, like "'", will be replaced with a proper one
   pos = 0;
-  while ( (pos = strFormat.find("%s", pos)) != string::npos )
+  while ( (pos = strFormat.find("%s", pos)) != std::string::npos )
     strFormat.replace(pos++, 2, "%q");
 
   p = mysql_vmprintf(strFormat.c_str(), args);
@@ -530,7 +531,7 @@ string MysqlDatabase::vprepare(const char *format, va_list args)
 
     //  RAND() is the mysql form of RANDOM()
     pos = 0;
-    while ( (pos = strResult.find("RANDOM()", pos)) != string::npos )
+    while ( (pos = strResult.find("RANDOM()", pos)) != std::string::npos )
     {
       strResult.replace(pos++, 8, "RAND()");
       pos += 6;
@@ -915,8 +916,8 @@ void MysqlDatabase::mysqlVXPrintf(
         }
         bufpt = &buf[etBUFSIZE-1];
         {
-          register const char *cset;      /* Use registers for speed */
-          register int base;
+          const char *cset;
+          int base;
           cset = &aDigits[infop->charset];
           base = infop->base;
           do{                                           /* Convert to ascii */
@@ -1164,7 +1165,7 @@ void MysqlDatabase::mysqlVXPrintf(
     ** the output.
     */
     if( !flag_leftjustify ){
-      register int nspace;
+      int nspace;
       nspace = width-length;
       if( nspace>0 ){
         appendSpace(pAccum, nspace);
@@ -1174,7 +1175,7 @@ void MysqlDatabase::mysqlVXPrintf(
       mysqlStrAccumAppend(pAccum, bufpt, length);
     }
     if( flag_leftjustify ){
-      register int nspace;
+      int nspace;
       nspace = width-length;
       if( nspace>0 ){
         appendSpace(pAccum, nspace);
@@ -1323,14 +1324,14 @@ MYSQL* MysqlDataset::handle(){
 }
 
 void MysqlDataset::make_query(StringList &_sql) {
-  string query;
+  std::string query;
   int result = 0;
   if (db == NULL) throw DbErrors("No Database Connection");
   try
   {
     if (autocommit) db->start_transaction();
 
-    for (list<string>::iterator i =_sql.begin(); i!=_sql.end(); ++i)
+    for (std::list<std::string>::iterator i =_sql.begin(); i!=_sql.end(); ++i)
     {
       query = *i;
       Dataset::parse_sql(query);
@@ -1403,8 +1404,8 @@ void MysqlDataset::fill_fields() {
 //------------- public functions implementation -----------------//
 bool MysqlDataset::dropIndex(const char *table, const char *index)
 {
-  string sql;
-  string sql_prepared;
+  std::string sql;
+  std::string sql_prepared;
 
   sql = "SELECT * FROM information_schema.statistics WHERE TABLE_SCHEMA=DATABASE() AND table_name='%s' AND index_name='%s'";
   sql_prepared = static_cast<MysqlDatabase*>(db)->prepare(sql.c_str(), table, index);
@@ -1429,37 +1430,37 @@ static bool ci_test(char l, char r)
   return tolower(l) == tolower(r);
 }
 
-static size_t ci_find(const string& where, const string& what)
+static size_t ci_find(const std::string& where, const std::string& what)
 {
   std::string::const_iterator loc = std::search(where.begin(), where.end(), what.begin(), what.end(), ci_test);
   if (loc == where.end())
-    return string::npos;
+    return std::string::npos;
   else
     return loc - where.begin();
 }
 
-int MysqlDataset::exec(const string &sql) {
+int MysqlDataset::exec(const std::string &sql) {
   if (!handle()) throw DbErrors("No Database Connection");
-  string qry = sql;
+  std::string qry = sql;
   int res = 0;
   exec_res.clear();
 
   // enforce the "auto_increment" keyword to be appended to "integer primary key"
   size_t loc;
 
-  if ( (loc=ci_find(qry, "integer primary key")) != string::npos)
+  if ( (loc=ci_find(qry, "integer primary key")) != std::string::npos)
   {
     qry = qry.insert(loc + 19, " auto_increment ");
   }
 
   // force the charset and collation to UTF-8
-  if ( ci_find(qry, "CREATE TABLE") != string::npos 
-    || ci_find(qry, "CREATE TEMPORARY TABLE") != string::npos )
+  if ( ci_find(qry, "CREATE TABLE") != std::string::npos 
+    || ci_find(qry, "CREATE TEMPORARY TABLE") != std::string::npos )
   {
     // If CREATE TABLE ... SELECT Syntax is used we need to add the encoding after the table before the select
     // e.g. CREATE TABLE x CHARACTER SET utf8 COLLATE utf8_general_ci [AS] SELECT * FROM y
-    if ((loc = qry.find(" AS SELECT ")) != string::npos ||
-        (loc = qry.find(" SELECT ")) != string::npos)
+    if ((loc = qry.find(" AS SELECT ")) != std::string::npos ||
+        (loc = qry.find(" SELECT ")) != std::string::npos)
     {
       qry = qry.insert(loc, " CHARACTER SET utf8 COLLATE utf8_general_ci");
     }
@@ -1502,7 +1503,7 @@ bool MysqlDataset::query(const std::string &query) {
   size_t loc;
 
   // mysql doesn't understand CAST(foo as integer) => change to CAST(foo as signed integer)
-  while ((loc = ci_find(qry, "as integer)")) != string::npos)
+  while ((loc = ci_find(qry, "as integer)")) != std::string::npos)
     qry = qry.insert(loc + 3, "signed ");
 
   MYSQL_RES *stmt = NULL;
@@ -1512,6 +1513,8 @@ bool MysqlDataset::query(const std::string &query) {
 
   MYSQL* conn = handle();
   stmt = mysql_store_result(conn);
+  if (stmt == NULL)
+    throw DbErrors("Missing result set!");
 
   // column headers
   const unsigned int numColumns = mysql_num_fields(stmt);
@@ -1586,7 +1589,7 @@ bool MysqlDataset::query(const std::string &query) {
   return true;
 }
 
-void MysqlDataset::open(const string &sql) {
+void MysqlDataset::open(const std::string &sql) {
    set_select_sql(sql);
    open();
 }
@@ -1594,7 +1597,7 @@ void MysqlDataset::open(const string &sql) {
 void MysqlDataset::open() {
   if (select_sql.size())
   {
-    query(select_sql.c_str());
+    query(select_sql);
   }
   else
   {

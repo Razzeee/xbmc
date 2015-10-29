@@ -35,6 +35,10 @@
 <!--                                                                                          -->
 <!--  Axis Ids / Analog Controls                                                              -->
 <!--   Coming soon.                                                                           -->
+<!--                                                                                          -->
+<!--  Long presses                                                                            -->
+<!--   A limitation is that if a single press is mapped in a section, a global "longpress"    -->
+<!--   will be ignored. The workaround is to duplicate the long mapping in the section.       -->
 <keymap>
   <global>
     <keyboard>
@@ -52,14 +56,21 @@
       <pageup>PageUp</pageup>
       <pagedown>PageDown</pagedown>
       <return>Select</return>
+      <return mod="longpress">ContextMenu</return>
       <enter>Select</enter>
+      <enter mod="longpress">ContextMenu</enter>
       <backspace>Back</backspace>
+      <backspace mod="longpress">ActivateWindow(Home)</backspace>
+      <browser_back>Back</browser_back>
+      <browser_back mod="longpress">ActivateWindow(Home)</browser_back>
       <key id='65446'>Back</key>
-      <m>ActivateWindow(PlayerControls)</m>
+      <m>Menu</m>
+      <m mod="ctrl">ActivateWindow(PlayerControls)</m>
       <s>ActivateWindow(shutdownmenu)</s>
       <escape>PreviousMenu</escape>
       <i>Info</i>
       <menu>ContextMenu</menu>
+      <menu mod="longpress">Menu</menu>
       <c>ContextMenu</c>
       <space>Pause</space>
       <x>Stop</x>
@@ -156,6 +167,7 @@
       <a mod="ctrl,shift">Notification(MCEKeypress, DVD audio, 3)</a>
       <k mod="ctrl,shift">ReloadKeymaps</k>
       <d mod="ctrl,shift">ToggleDebug</d>
+      <r mod="ctrl,shift">ToggleDirtyRegionVisualization</r>
     </keyboard>
   </global>
   <LoginScreen>
@@ -171,12 +183,27 @@
   </Home>
   <VirtualKeyboard>
     <keyboard>
+      <left>Left</left>
+      <right>Right</right>
+      <up>Up</up>
+      <down>Down</down>
+      <return>Select</return>
+      <enter>Select</enter>
+      <return mod="longpress">Enter</return>
+      <enter mod="longpress">Enter</enter>
+      <left mod="longpress">Backspace</left>
+      <right mod="longpress">Number0</right> <!-- first entry creates a space -->
+      <up mod="longpress">Shift</up>
+      <down mod="longpress">Symbols</down>
       <backspace>Backspace</backspace>
+      <browser_back>Backspace</browser_back>
+      <backspace mod="longpress">PreviousMenu</backspace>
+      <browser_back mod="longpress">PreviousMenu</browser_back>
     </keyboard>
   </VirtualKeyboard>
   <MyTVChannels>
     <keyboard>
-      <m>Move</m>
+      <m mod="ctrl">Move</m>
     </keyboard>
   </MyTVChannels>
   <MyTVRecordings>
@@ -193,7 +220,7 @@
   </MyTVTimers>
   <MyRadioChannels>
     <keyboard>
-      <m>Move</m>
+      <m mod="ctrl">Move</m>
     </keyboard>
   </MyRadioChannels>
   <MyRadioRecordings>
@@ -251,12 +278,18 @@
       <period>StepForward</period>
       <comma>StepBack</comma>
       <backspace>Fullscreen</backspace>
-      <quote>Seek(-7)</quote><!-- Replaces smallstepback -->
+      <backspace mod="longpress">Stop</backspace>
+      <browser_back>Fullscreen</browser_back>
+      <browser_back mod="longpress">Stop</browser_back>
+      <quote>Seek(-7)</quote> <!-- Replaces smallstepback -->
       <opensquarebracket>BigStepForward</opensquarebracket>
       <closesquarebracket>BigStepBack</closesquarebracket>
       <return>OSD</return>
       <enter>OSD</enter>
+      <return mod="longpress">PlayPause</return>
+      <enter mod="longpress">PlayPause</enter>
       <m>OSD</m>
+      <menu>OSD</menu>
       <i>Info</i>
       <o>CodecInfo</o>
       <z>AspectRatio</z>
@@ -292,11 +325,12 @@
       <i>Back</i>
       <d mod="ctrl">Back</d>
       <m>OSD</m>
+      <menu>OSD</menu>
     </keyboard>
   </FullscreenInfo>
   <PlayerControls>
     <keyboard>
-      <m>Back</m>
+      <m mod="ctrl">Back</m>
     </keyboard>
   </PlayerControls>
   <Visualisation>
@@ -308,12 +342,16 @@
       <pageup>IncreaseRating</pageup>
       <pagedown>DecreaseRating</pagedown>
       <backspace>Fullscreen</backspace>
+      <backspace mod="longpress">Stop</backspace>
+      <browser_back>Fullscreen</browser_back>
+      <browser_back mod="longpress">Stop</browser_back>
       <return>OSD</return>
       <enter>OSD</enter>
       <m>OSD</m>
+      <menu>OSD</menu>
       <i>Info</i>
       <p>ActivateWindow(VisualisationPresetList)</p>
-      <v>ActivateWindow(VisualisationSettings)</v>
+      <v>Addon.Default.OpenSettings(xbmc.player.musicviz)</v>
       <n>ActivateWindow(MusicPlaylist)</n>
       <left>StepBack</left>
       <right>StepForward</right>
@@ -333,10 +371,11 @@
       <period>SkipNext</period>
       <comma>SkipPrevious</comma>
       <m>Back</m>
+      <menu>Back</menu>
       <i>Info</i>
       <o>CodecInfo</o>
       <p>ActivateWindow(VisualisationPresetList)</p>
-      <v>ActivateWindow(VisualisationSettings)</v>
+      <v>Addon.Default.OpenSettings(xbmc.player.musicviz)</v>
       <n>ActivateWindow(MusicPlaylist)</n>
     </keyboard>
   </MusicOSD>
@@ -409,6 +448,7 @@
   <VideoOSD>
     <keyboard>
       <m>Back</m>
+      <menu>Back</menu>
       <g mod="ctrl">Back</g> <!-- MCE Guide button -->
       <i>Info</i>
       <o>CodecInfo</o>
@@ -419,6 +459,7 @@
       <opensquarebracket>BigStepForward</opensquarebracket>
       <closesquarebracket>BigStepBack</closesquarebracket>
       <m>OSD</m>
+      <menu>OSD</menu>
       <i>Info</i>
       <o>CodecInfo</o>
       <z>AspectRatio</z>
@@ -516,6 +557,7 @@
   <Favourites>
     <keyboard>
       <backspace>Close</backspace>
+      <browser_back>Close</browser_back>
       <u>MoveItemUp</u>
       <d>MoveItemDown</d>
     </keyboard>
@@ -523,28 +565,42 @@
   <NumericInput>
     <keyboard>
       <backspace>Close</backspace>
+      <browser_back>Close</browser_back>
     </keyboard>
   </NumericInput>
   <FullscreenLiveTV>
     <keyboard>
       <left>StepBack</left>
       <right>StepForward</right>
-      <up>ChannelUp</up>
-      <down>ChannelDown</down>
+      <up>Up</up>
+      <down>Down</down>
+      <return>OSD</return>
+      <enter>OSD</enter>
+      <return mod="longpress">ActivateWindow(PVROSDChannels)</return>
+      <enter mod="longpress">ActivateWindow(PVROSDChannels)</enter>
+      <pageup>ChannelUp</pageup>
+      <pagedown>ChannelDown</pagedown>
     </keyboard>
   </FullscreenLiveTV>
   <FullscreenRadio>
     <keyboard>
       <left>StepBack</left>
       <right>StepForward</right>
-      <up>ChannelUp</up>
-      <down>ChannelDown</down>
+      <up>Up</up>
+      <down>Down</down>
+      <return>OSD</return>
+      <enter>OSD</enter>
+      <return mod="longpress">ActivateWindow(PVROSDChannels)</return>
+      <enter mod="longpress">ActivateWindow(PVROSDChannels)</enter>
+      <pageup>ChannelUp</pageup>
+      <pagedown>ChannelDown</pagedown>
     </keyboard>
   </FullscreenRadio>
   <PVROSDChannels>
     <keyboard>
       <backspace>Close</backspace>
       <escape>Close</escape>
+      <browser_back>Close</browser_back>
       <c>Close</c>
     </keyboard>
   </PVROSDChannels>
@@ -552,11 +608,13 @@
     <keyboard>
       <backspace>Close</backspace>
       <escape>Close</escape>
+      <browser_back>Close</browser_back>
     </keyboard>
   </PVROSDGuide>
   <MyTVSettings>
     <keyboard>
       <backspace>PreviousMenu</backspace>
+      <browser_back>PreviousMenu</browser_back>
     </keyboard>
   </MyTVSettings>
   <FileBrowser>

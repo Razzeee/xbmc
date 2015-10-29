@@ -22,19 +22,24 @@
 #include "music/MusicDatabase.h"
 #include "FileItem.h"
 #include "Util.h"
+#include "utils/SortUtils.h"
 #include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
+#include "utils/Variant.h"
 #include "music/tags/MusicInfoTag.h"
 #include "music/Artist.h"
 #include "music/Album.h"
 #include "music/Song.h"
-#include "ApplicationMessenger.h"
+#include "music/Artist.h"
+#include "messaging/ApplicationMessenger.h"
 #include "filesystem/Directory.h"
 #include "settings/Settings.h"
+#include "settings/AdvancedSettings.h"
 
 using namespace MUSIC_INFO;
 using namespace JSONRPC;
 using namespace XFILE;
+using namespace KODI::MESSAGING;
 
 JSONRPC_STATUS CAudioLibrary::GetArtists(const std::string &method, ITransportLayer *transport, IClient *client, const CVariant &parameterObject, CVariant &result)
 {
@@ -43,7 +48,9 @@ JSONRPC_STATUS CAudioLibrary::GetArtists(const std::string &method, ITransportLa
     return InternalError;
 
   CMusicDbUrl musicUrl;
-  musicUrl.FromString("musicdb://artists/");
+  if (!musicUrl.FromString("musicdb://artists/"))
+    return InternalError;
+
   int genreID = -1, albumID = -1, songID = -1;
   const CVariant &filter = parameterObject["filter"];
   if (filter.isMember("genreid"))
@@ -65,7 +72,7 @@ JSONRPC_STATUS CAudioLibrary::GetArtists(const std::string &method, ITransportLa
     musicUrl.AddOption("xsp", xsp);
   }
 
-  bool albumArtistsOnly = !CSettings::Get().GetBool("musiclibrary.showcompilationartists");
+  bool albumArtistsOnly = !CSettings::GetInstance().GetBool(CSettings::SETTING_MUSICLIBRARY_SHOWCOMPILATIONARTISTS);
   if (parameterObject["albumartistsonly"].isBoolean())
     albumArtistsOnly = parameterObject["albumartistsonly"].asBoolean();
 
@@ -127,7 +134,9 @@ JSONRPC_STATUS CAudioLibrary::GetAlbums(const std::string &method, ITransportLay
     return InternalError;
 
   CMusicDbUrl musicUrl;
-  musicUrl.FromString("musicdb://albums/");
+  if (!musicUrl.FromString("musicdb://albums/"))
+    return InternalError;
+
 
   if (parameterObject["includesingles"].asBoolean())
     musicUrl.AddOption("show_singles", true);
@@ -209,7 +218,9 @@ JSONRPC_STATUS CAudioLibrary::GetSongs(const std::string &method, ITransportLaye
     return InternalError;
 
   CMusicDbUrl musicUrl;
-  musicUrl.FromString("musicdb://songs/");
+  if (!musicUrl.FromString("musicdb://songs/"))
+    return InternalError;
+
 
   if (!parameterObject["includesingles"].asBoolean())
     musicUrl.AddOption("singles", false);
@@ -450,8 +461,14 @@ JSONRPC_STATUS CAudioLibrary::SetAlbumDetails(const std::string &method, ITransp
 
   if (ParameterNotNull(parameterObject, "title"))
     album.strAlbum = parameterObject["title"].asString();
+  // Artist names, along with MusicbrainzAlbumArtistID needs to update artist credits
+  // As temp fix just set the album artist description string
   if (ParameterNotNull(parameterObject, "artist"))
-    CopyStringArray(parameterObject["artist"], album.artist);
+  {
+    std::vector<std::string> artist;
+    CopyStringArray(parameterObject["artist"], artist);
+    album.strArtistDesc = StringUtils::Join(artist, g_advancedSettings.m_musicItemSeparator);
+  }
   if (ParameterNotNull(parameterObject, "description"))
     album.strReview = parameterObject["description"].asString();
   if (ParameterNotNull(parameterObject, "genre"))
@@ -492,16 +509,25 @@ JSONRPC_STATUS CAudioLibrary::SetSongDetails(const std::string &method, ITranspo
 
   if (ParameterNotNull(parameterObject, "title"))
     song.strTitle = parameterObject["title"].asString();
+  // Artist names, along with MusicbrainzArtistID needs to update artist credits
+  // As temp fix just set the artist description string
   if (ParameterNotNull(parameterObject, "artist"))
-    CopyStringArray(parameterObject["artist"], song.artist);
-  if (ParameterNotNull(parameterObject, "albumartist"))
-    CopyStringArray(parameterObject["albumartist"], song.albumArtist);
+  {
+    std::vector<std::string> artist;
+    CopyStringArray(parameterObject["artist"], artist);
+    song.strArtistDesc = StringUtils::Join(artist, g_advancedSettings.m_musicItemSeparator);
+  }
+  //Albumartist not part of song, belongs to album so not changed as a song detail??
+  //if (ParameterNotNull(parameterObject, "albumartist"))
+  //  CopyStringArray(parameterObject["albumartist"], song.albumArtist);
+  // song_genre table needs updating too when genre string changes. This needs fixing too.
   if (ParameterNotNull(parameterObject, "genre"))
     CopyStringArray(parameterObject["genre"], song.genre);
   if (ParameterNotNull(parameterObject, "year"))
     song.iYear = (int)parameterObject["year"].asInteger();
   if (ParameterNotNull(parameterObject, "rating"))
     song.rating = '0' + (char)parameterObject["rating"].asInteger();
+  //Album title is not part of song, it belongs to album so not changed as a song detail??
   if (ParameterNotNull(parameterObject, "album"))
     song.strAlbum = parameterObject["album"].asString();
   if (ParameterNotNull(parameterObject, "track"))
@@ -515,10 +541,13 @@ JSONRPC_STATUS CAudioLibrary::SetSongDetails(const std::string &method, ITranspo
   if (ParameterNotNull(parameterObject, "musicbrainztrackid"))
     song.strMusicBrainzTrackID = parameterObject["musicbrainztrackid"].asString();
   if (ParameterNotNull(parameterObject, "playcount"))
-    song.iTimesPlayed = parameterObject["playcount"].asInteger();
+    song.iTimesPlayed = static_cast<int>(parameterObject["playcount"].asInteger());
   if (ParameterNotNull(parameterObject, "lastplayed"))
     song.lastPlayed.SetFromDBDateTime(parameterObject["lastplayed"].asString());
 
+  // This overlay of UpdateSong needs to be deprecated.
+  // Also need to update artist credits and propagate changes
+  // to song_artist and song_genre tables.
   if (musicdatabase.UpdateSong(id, song) <= 0)
     return InternalError;
 
@@ -531,7 +560,7 @@ JSONRPC_STATUS CAudioLibrary::Scan(const std::string &method, ITransportLayer *t
   std::string directory = parameterObject["directory"].asString();
   std::string cmd = StringUtils::Format("updatelibrary(music, %s, %s)", StringUtils::Paramify(directory).c_str(), parameterObject["showdialogs"].asBoolean() ? "true" : "false");
 
-  CApplicationMessenger::Get().ExecBuiltIn(cmd);
+  CApplicationMessenger::GetInstance().SendMsg(TMSG_EXECUTE_BUILT_IN, -1, -1, nullptr, cmd);
   return ACK;
 }
 
@@ -545,14 +574,14 @@ JSONRPC_STATUS CAudioLibrary::Export(const std::string &method, ITransportLayer 
                               parameterObject["options"]["images"].asBoolean() ? "true" : "false",
                               parameterObject["options"]["overwrite"].asBoolean() ? "true" : "false");
 
-  CApplicationMessenger::Get().ExecBuiltIn(cmd);
+  CApplicationMessenger::GetInstance().SendMsg(TMSG_EXECUTE_BUILT_IN, -1, -1, nullptr, cmd);
   return ACK;
 }
 
 JSONRPC_STATUS CAudioLibrary::Clean(const std::string &method, ITransportLayer *transport, IClient *client, const CVariant &parameterObject, CVariant &result)
 {
   std::string cmd = StringUtils::Format("cleanlibrary(music, %s)", parameterObject["showdialogs"].asBoolean() ? "true" : "false");
-  CApplicationMessenger::Get().ExecBuiltIn(cmd);
+  CApplicationMessenger::GetInstance().SendMsg(TMSG_EXECUTE_BUILT_IN, -1, -1, nullptr, cmd);
   return ACK;
 }
 
@@ -642,11 +671,11 @@ bool CAudioLibrary::FillFileItemList(const CVariant &parameterObject, CFileItemL
     // If we retrieved the list of songs by "artistid"
     // we sort by album (and implicitly by track number)
     if (artistID != -1)
-      list.Sort(SortByAlbum, SortOrderAscending, CSettings::Get().GetBool("filelists.ignorethewhensorting") ? SortAttributeIgnoreArticle : SortAttributeNone);
+      list.Sort(SortByAlbum, SortOrderAscending, CSettings::GetInstance().GetBool(CSettings::SETTING_FILELISTS_IGNORETHEWHENSORTING) ? SortAttributeIgnoreArticle : SortAttributeNone);
     // If we retrieve the list of songs by "genreid"
     // we sort by artist (and implicitly by album and track number)
     else if (genreID != -1)
-      list.Sort(SortByArtist, SortOrderAscending, CSettings::Get().GetBool("filelists.ignorethewhensorting") ? SortAttributeIgnoreArticle : SortAttributeNone);
+      list.Sort(SortByArtist, SortOrderAscending, CSettings::GetInstance().GetBool(CSettings::SETTING_FILELISTS_IGNORETHEWHENSORTING) ? SortAttributeIgnoreArticle : SortAttributeNone);
     // otherwise we sort by track number
     else
       list.Sort(SortByTrackNumber, SortOrderAscending);

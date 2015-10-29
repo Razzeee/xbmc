@@ -41,9 +41,6 @@
 #import "AutoPool.h"
 
 
-// hack for Cocoa_GL_ResizeWindow
-//extern "C" void SDL_SetWidthHeight(int w, int h);
-
 //#define MAX_DISPLAYS 32
 //static NSWindow* blankingWindows[MAX_DISPLAYS];
 
@@ -246,7 +243,6 @@ const char* Cocoa_GetIconFromBundle(const char *_bundlePath, const char* _iconNa
     NSBitmapImageRep* rep = [[NSBitmapImageRep alloc] initWithData:[icon TIFFRepresentation]];
     NSData* png = [rep representationUsingType:NSPNGFileType properties:nil];
     [png writeToFile:pngFile atomically:YES];
-    [png release];
     [rep release];
     [icon release];
   }
@@ -286,54 +282,32 @@ char* Cocoa_MountPoint2DeviceName(char *path)
 bool Cocoa_GetVolumeNameFromMountPoint(const std::string &mountPoint, std::string &volumeName)
 {
   CCocoaAutoPool pool;
-  unsigned i, count = 0;
-  struct statfs *buf = NULL;
-  std::string mountpoint, devicepath;
-
-  count = getmntinfo(&buf, 0);
-  for (i=0; i<count; i++)
+  NSFileManager *fm = [NSFileManager defaultManager];
+  NSArray *mountedVolumeUrls = [fm mountedVolumeURLsIncludingResourceValuesForKeys:@[ NSURLVolumeNameKey, NSURLPathKey ] options:0];
+  bool resolved = false;
+  
+  for (NSURL *volumeURL in mountedVolumeUrls)
   {
-    mountpoint = buf[i].f_mntonname;
-    if (mountpoint == mountPoint)
+    NSString *path;
+    BOOL success = [volumeURL getResourceValue:&path forKey:NSURLPathKey error:nil];
+    
+    if (success && path != nil)
     {
-      devicepath = buf[i].f_mntfromname;
-      break;
+      std::string mountpoint = [path UTF8String];
+      if (mountpoint == mountPoint)
+      {
+        NSString *name;
+        success = [volumeURL getResourceValue:&name forKey:NSURLVolumeNameKey error:nil];
+        if (success && name != nil)
+        {
+          volumeName = [name UTF8String];
+          resolved = true;
+          break;
+        }
+      }
     }
   }
-  if (devicepath.empty())
-  {
-    return false;
-  }
-
-  DASessionRef session = DASessionCreate(kCFAllocatorDefault);
-  if (!session)
-  {
-      return false;
-  }
-
-  DADiskRef disk = DADiskCreateFromBSDName(kCFAllocatorDefault, session, devicepath.c_str());
-  if (!disk)
-  {
-      CFRelease(session);
-      return false;
-  }
-
-  NSDictionary *dd = (NSDictionary*) DADiskCopyDescription(disk);
-  if (!dd)
-  {
-      CFRelease(session);
-      CFRelease(disk);
-      return false;
-  }
-
-  NSString *volumename = [dd objectForKey:(NSString*)kDADiskDescriptionVolumeNameKey];
-  volumeName = [volumename UTF8String];
-
-  CFRelease(session);		        
-  CFRelease(disk);		        
-  [dd release];
-
-  return true ;
+  return resolved;
 }
 
 /*
@@ -426,50 +400,7 @@ bool Cocoa_GPUForDisplayIsNvidiaPureVideo3()
   return(result);
 }
 
-int Cocoa_GetOSVersion()
-{
-  static SInt32 version = -1;
-
-  if (version == -1)
-    Gestalt(gestaltSystemVersion, &version);
-  
-  return(version);
-}
-
-
-NSWindow* childWindow = nil;
-NSWindow* mainWindow = nil;
-
-
-void Cocoa_MakeChildWindow()
-{
-  NSOpenGLContext* context = Cocoa_GL_GetCurrentContext();
-  NSView* view = [context view];
-  NSWindow* window = [view window];
-
-  // Create a child window.
-  childWindow = [[NSWindow alloc] initWithContentRect:[window frame]
-                                            styleMask:NSBorderlessWindowMask
-                                              backing:NSBackingStoreBuffered
-                                                defer:NO];
-                                          
-  [childWindow setContentSize:[view frame].size];
-  [childWindow setBackgroundColor:[NSColor blackColor]];
-  [window addChildWindow:childWindow ordered:NSWindowAbove];
-  mainWindow = window;
-  //childWindow.alphaValue = 0.5; 
-}
-
-void Cocoa_DestroyChildWindow()
-{
-  if (childWindow != nil)
-  {
-    [mainWindow removeChildWindow:childWindow];
-    [childWindow close];
-    childWindow = nil;
-  }
-}
-const char *Cocoa_Paste() 
+const char *Cocoa_Paste()
 {
   NSPasteboard *pasteboard = [NSPasteboard generalPasteboard];
   NSString *type = [pasteboard availableTypeFromArray:[NSArray arrayWithObject:NSStringPboardType]];

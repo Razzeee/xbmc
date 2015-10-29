@@ -19,22 +19,24 @@
  *
  */
 
-#include <map>
-
+#include "FileItem.h"
 #include "addons/include/xbmc_pvr_types.h"
+#include "interfaces/IAnnouncer.h"
 #include "settings/lib/ISettingCallback.h"
 #include "threads/Event.h"
 #include "threads/Thread.h"
 #include "utils/JobManager.h"
 #include "utils/Observer.h"
-#include "interfaces/IAnnouncer.h"
+
 #include "pvr/recordings/PVRRecording.h"
-#include "FileItem.h"
+
+#include <map>
 
 class CGUIDialogProgressBarHandle;
 class CStopWatch;
 class CAction;
 class CFileItemList;
+class CVariant;
 
 namespace EPG
 {
@@ -80,7 +82,7 @@ namespace PVR
     CONTINUE_LAST_CHANNEL_IN_FOREGROUND
   };
 
-  #define g_PVRManager       CPVRManager::Get()
+  #define g_PVRManager       CPVRManager::GetInstance()
   #define g_PVRChannelGroups g_PVRManager.ChannelGroups()
   #define g_PVRTimers        g_PVRManager.Timers()
   #define g_PVRRecordings    g_PVRManager.Recordings()
@@ -110,16 +112,16 @@ namespace PVR
      */
     virtual ~CPVRManager(void);
 
-    virtual void Announce(ANNOUNCEMENT::AnnouncementFlag flag, const char *sender, const char *message, const CVariant &data);
+    virtual void Announce(ANNOUNCEMENT::AnnouncementFlag flag, const char *sender, const char *message, const CVariant &data) override;
 
     /*!
      * @brief Get the instance of the PVRManager.
      * @return The PVRManager instance.
      */
-    static CPVRManager &Get(void);
+    static CPVRManager &GetInstance();
 
-    virtual void OnSettingChanged(const CSetting *setting);
-    virtual void OnSettingAction(const CSetting *setting);
+    virtual void OnSettingChanged(const CSetting *setting) override;
+    virtual void OnSettingAction(const CSetting *setting) override;
 
     /*!
      * @brief Get the channel groups container.
@@ -148,9 +150,8 @@ namespace PVR
     /*!
      * @brief Start the PVRManager, which loads all PVR data and starts some threads to update the PVR data.
      * @param bAsync True to (re)start the manager from another thread
-     * @param openWindowId Window id to open after starting
      */
-    void Start(bool bAsync = false, int openWindowId = 0);
+    void Start(bool bAsync = false);
 
     /*!
      * @brief Stop the PVRManager and destroy all objects it created.
@@ -182,9 +183,8 @@ namespace PVR
     /*!
      * @brief Mark an add-on as outdated so it will be upgrade when it's possible again
      * @param strAddonId The add-on to mark as outdated
-     * @param strReferer The referer to use when downloading
      */
-    void MarkAsOutdated(const std::string& strAddonId, const std::string& strReferer);
+    void MarkAsOutdated(const std::string& strAddonId);
 
     /*!
      * @return True when updated, false when the pvr manager failed to load after the attempt
@@ -238,6 +238,12 @@ namespace PVR
     bool IsPlaying(void) const;
 
     /*!
+     * @brief Check if the given channel is playing.
+     * @return True if it's playing, false otherwise.
+     */
+    bool IsPlayingChannel(const CPVRChannelPtr &channel) const;
+
+    /*!
      * @return True while the PVRManager is initialising.
      */
     inline bool IsInitialising(void) const
@@ -283,6 +289,11 @@ namespace PVR
      * @return The channel or NULL if none is playing.
      */
     CPVRChannelPtr GetCurrentChannel(void) const;
+
+    /*!
+     * @brief Update the channel displayed in guiinfomanager and application to match the currently playing channel.
+     */
+    void UpdateCurrentChannel(void);
 
     /*!
      * @brief Return the EPG for the channel that is currently playing.
@@ -573,7 +584,7 @@ namespace PVR
     /*!
      * @brief PVR update and control thread.
      */
-    virtual void Process(void);
+    virtual void Process(void) override;
 
   private:
     /*!
@@ -668,8 +679,7 @@ namespace PVR
     CCriticalSection                m_managerStateMutex;
     ManagerState                    m_managerState;
     CStopWatch                     *m_parentalTimer;
-    int                             m_openWindowId;
-    std::map<std::string, std::string> m_outdatedAddons;
+    std::vector<std::string>        m_outdatedAddons;
     static int                      m_pvrWindowIds[10];
   };
 

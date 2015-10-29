@@ -1,3 +1,4 @@
+
 /*
  *      Copyright (C) 2005-2013 Team XBMC
  *      http://xbmc.org
@@ -27,6 +28,7 @@
 #include "Util.h"
 #include "utils/URIUtils.h"
 #include "utils/StringUtils.h"
+#include "utils/Variant.h"
 #include "filesystem/Directory.h"
 #include "filesystem/PVRDirectory.h"
 #include "GUIDialogYesNo.h"
@@ -42,7 +44,6 @@
 #include "filesystem/File.h"
 #endif
 
-using namespace std;
 using namespace XFILE;
 
 #define CONTROL_HEADING          2
@@ -133,14 +134,14 @@ bool CGUIDialogMediaSource::ShowAndAddMediaSource(const std::string &type)
   dialog->Initialize();
   dialog->SetShare(CMediaSource());
   dialog->SetTypeOfMedia(type);
-  dialog->DoModal();
+  dialog->Open();
   bool confirmed(dialog->IsConfirmed());
   if (confirmed)
   { // yay, add this share
     CMediaSource share;
     unsigned int i,j=2;
     bool bConfirmed=false;
-    VECSOURCES* pShares = CMediaSourceSettings::Get().GetSources(type);
+    VECSOURCES* pShares = CMediaSourceSettings::GetInstance().GetSources(type);
     std::string strName = dialog->m_name;
     while (!bConfirmed)
     {
@@ -158,7 +159,7 @@ bool CGUIDialogMediaSource::ShowAndAddMediaSource(const std::string &type)
     if (dialog->m_paths->Size() > 0) {
       share.m_strThumbnailImage = dialog->m_paths->Get(0)->GetArt("thumb");
     }
-    CMediaSourceSettings::Get().AddShare(type, share);
+    CMediaSourceSettings::GetInstance().AddShare(type, share);
   }
   dialog->m_paths->Clear();
   return confirmed;
@@ -166,7 +167,7 @@ bool CGUIDialogMediaSource::ShowAndAddMediaSource(const std::string &type)
 
 bool CGUIDialogMediaSource::ShowAndEditMediaSource(const std::string &type, const std::string&share)
 {
-  VECSOURCES* pShares = CMediaSourceSettings::Get().GetSources(type);
+  VECSOURCES* pShares = CMediaSourceSettings::GetInstance().GetSources(type);
   if (pShares)
   {
     for (unsigned int i=0;i<pShares->size();++i)
@@ -186,13 +187,13 @@ bool CGUIDialogMediaSource::ShowAndEditMediaSource(const std::string &type, cons
   dialog->Initialize();
   dialog->SetShare(share);
   dialog->SetTypeOfMedia(type, true);
-  dialog->DoModal();
+  dialog->Open();
   bool confirmed(dialog->IsConfirmed());
   if (confirmed)
   { // yay, add this share
     unsigned int i,j=2;
     bool bConfirmed=false;
-    VECSOURCES* pShares = CMediaSourceSettings::Get().GetSources(type);
+    VECSOURCES* pShares = CMediaSourceSettings::GetInstance().GetSources(type);
     std::string strName = dialog->m_name;
     while (!bConfirmed)
     {
@@ -209,7 +210,7 @@ bool CGUIDialogMediaSource::ShowAndEditMediaSource(const std::string &type, cons
 
     CMediaSource newShare;
     newShare.FromNameAndPaths(type, strName, dialog->GetPaths());
-    CMediaSourceSettings::Get().UpdateShare(type, strOldName, newShare);
+    CMediaSourceSettings::GetInstance().UpdateShare(type, strOldName, newShare);
   }
   dialog->m_paths->Clear();
   return confirmed;
@@ -255,7 +256,7 @@ void CGUIDialogMediaSource::OnPathBrowse(int item)
     share1.strName = StringUtils::Format(strStreams.c_str(), "SAP"); //"SAP Streams"
     extraShares.push_back(share1);
 
-    if (CSettings::Get().GetString("audiocds.recordingpath") != "")
+    if (CSettings::GetInstance().GetString(CSettings::SETTING_AUDIOCDS_RECORDINGPATH) != "")
     {
       share1.strPath = "special://recordings/";
       share1.strName = g_localizeStrings.Get(21883);
@@ -281,10 +282,6 @@ void CGUIDialogMediaSource::OnPathBrowse(int item)
     share1.m_ignore = true;
     share1.strPath = "special://videoplaylists/";
     share1.strName = g_localizeStrings.Get(20012);
-    extraShares.push_back(share1);
-
-    share1.strPath = "hdhomerun://";
-    share1.strName = StringUtils::Format(strDevices.c_str(), "HDHomerun"); //"HDHomerun Devices"
     extraShares.push_back(share1);
 
     share1.strPath = "sap://";
@@ -330,7 +327,7 @@ void CGUIDialogMediaSource::OnPathBrowse(int item)
 #endif
 
     share1.m_ignore = true;
-    if (CSettings::Get().GetString("debug.screenshotpath") != "")
+    if (CSettings::GetInstance().GetString(CSettings::SETTING_DEBUG_SCREENSHOTPATH) != "")
     {
       share1.strPath = "special://screenshots/";
       share1.strName = g_localizeStrings.Get(20008);
@@ -364,7 +361,7 @@ void CGUIDialogMediaSource::OnPath(int item)
     m_bNameChanged=true;
 
   std::string path(m_paths->Get(item)->GetPath());
-  CGUIKeyboardFactory::ShowAndGetInput(path, g_localizeStrings.Get(1021), false);
+  CGUIKeyboardFactory::ShowAndGetInput(path, CVariant{g_localizeStrings.Get(1021)}, false);
   m_paths->Get(item)->SetPath(path);
 
   if (!m_bNameChanged || m_name.empty())
@@ -385,10 +382,10 @@ void CGUIDialogMediaSource::OnOK()
   CMediaSource share;
   share.FromNameAndPaths(m_type, m_name, GetPaths());
   // hack: Need to temporarily add the share, then get path, then remove share
-  VECSOURCES *shares = CMediaSourceSettings::Get().GetSources(m_type);
+  VECSOURCES *shares = CMediaSourceSettings::GetInstance().GetSources(m_type);
   if (shares)
     shares->push_back(share);
-  if (StringUtils::StartsWithNoCase(share.strPath, "plugin://") || CDirectory::GetDirectory(share.strPath, items, "", DIR_FLAG_NO_FILE_DIRS | DIR_FLAG_ALLOW_PROMPT) || CGUIDialogYesNo::ShowAndGetInput(1001, 1025))
+  if (StringUtils::StartsWithNoCase(share.strPath, "plugin://") || CDirectory::GetDirectory(share.strPath, items, "", DIR_FLAG_NO_FILE_DIRS | DIR_FLAG_ALLOW_PROMPT) || CGUIDialogYesNo::ShowAndGetInput(CVariant{1001}, CVariant{1025}))
   {
     m_confirmed = true;
     Close();
@@ -519,9 +516,9 @@ void CGUIDialogMediaSource::OnPathAdd()
   HighlightItem(m_paths->Size() - 1);
 }
 
-vector<string> CGUIDialogMediaSource::GetPaths() const
+std::vector<std::string> CGUIDialogMediaSource::GetPaths() const
 {
-  vector<string> paths;
+  std::vector<std::string> paths;
   for (int i = 0; i < m_paths->Size(); i++)
   {
     if (!m_paths->Get(i)->GetPath().empty())

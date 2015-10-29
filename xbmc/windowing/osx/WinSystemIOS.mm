@@ -45,11 +45,7 @@
 #import <OpenGLES/ES2/glext.h>
 #import <QuartzCore/CADisplayLink.h>
 
-#if defined(TARGET_DARWIN_IOS_ATV2)
-#import "atv2/KodiController.h"
-#else
 #import "ios/XBMCController.h"
-#endif
 #import "osx/IOSScreenManager.h"
 #include "osx/DarwinUtils.h"
 #import <dlfcn.h>
@@ -108,7 +104,13 @@ bool CWinSystemIOS::CreateNewWindow(const std::string& name, bool fullScreen, RE
   m_bWindowCreated = true;
 
   m_eglext  = " ";
-  m_eglext += (const char*) glGetString(GL_EXTENSIONS);
+
+  const char *tmpExtensions = (const char*) glGetString(GL_EXTENSIONS);
+  if (tmpExtensions != NULL)
+  {
+    m_eglext += tmpExtensions;
+  }
+
   m_eglext += " ";
 
   CLog::Log(LOGDEBUG, "EGL_EXTENSIONS:%s", m_eglext.c_str());
@@ -144,9 +146,7 @@ bool CWinSystemIOS::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool bl
   m_bFullScreen = fullScreen;
 
   CLog::Log(LOGDEBUG, "About to switch to %i x %i on screen %i",m_nWidth, m_nHeight, res.iScreen);
-#ifndef TARGET_DARWIN_IOS_ATV2
   SwitchToVideoMode(res.iWidth, res.iHeight, res.fRefreshRate, res.iScreen);
-#endif//TARGET_DARWIN_IOS_ATV2
   CRenderSystemGLES::ResetRenderSystem(res.iWidth, res.iHeight, fullScreen, res.fRefreshRate);
   
   return true;
@@ -247,10 +247,9 @@ void CWinSystemIOS::UpdateResolutions()
   //first screen goes into the current desktop mode
   if(GetScreenResolution(&w, &h, &fps, 0))
   {
-    UpdateDesktopResolution(CDisplaySettings::Get().GetResolutionInfo(RES_DESKTOP), 0, w, h, fps);
+    UpdateDesktopResolution(CDisplaySettings::GetInstance().GetResolutionInfo(RES_DESKTOP), 0, w, h, fps);
   }
 
-#ifndef TARGET_DARWIN_IOS_ATV2
   //see resolution.h enum RESOLUTION for how the resolutions
   //have to appear in the resolution info vector in CDisplaySettings
   //add the desktop resolutions of the other screens
@@ -261,14 +260,13 @@ void CWinSystemIOS::UpdateResolutions()
     if(GetScreenResolution(&w, &h, &fps, i))
     {
       UpdateDesktopResolution(res, i, w, h, fps);
-      CDisplaySettings::Get().AddResolutionInfo(res);
+      CDisplaySettings::GetInstance().AddResolutionInfo(res);
     }
   }
   
   //now just fill in the possible reolutions for the attached screens
   //and push to the resolution info vector
   FillInVideoModes();
-#endif //TARGET_DARWIN_IOS_ATV2
 }
 
 void CWinSystemIOS::FillInVideoModes()
@@ -307,7 +305,7 @@ void CWinSystemIOS::FillInVideoModes()
       //the same resolution twice... - thats why i add a FIXME here.
       res.strMode = StringUtils::Format("%dx%d @ %.2f", w, h, refreshrate);
       g_graphicsContext.ResetOverscan(res);
-      CDisplaySettings::Get().AddResolutionInfo(res);
+      CDisplaySettings::GetInstance().AddResolutionInfo(res);
     }
   }
 }
@@ -445,14 +443,8 @@ void CWinSystemIOS::ShowOSMouse(bool show)
 
 bool CWinSystemIOS::HasCursor()
 {
-  if( CDarwinUtils::IsAppleTV2() )
-  {
-    return true;
-  }
-  else//apple touch devices
-  {
-    return false;
-  }
+  // apple touch devices
+  return false;
 }
 
 void CWinSystemIOS::NotifyAppActiveChange(bool bActivated)

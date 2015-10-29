@@ -592,7 +592,7 @@ int udf25::ReadAt( int64_t pos, size_t len, unsigned char *data )
     return -1;
 
   ssize_t ret = m_fp->Read(data, len);
-  if (static_cast<size_t>(ret) < len)
+  if ( ret > 0 && static_cast<size_t>(ret) < len)
   {
     CLog::Log(LOGERROR, "udf25::ReadFile - less data than requested available!" );
     return (int)ret;
@@ -967,7 +967,23 @@ udf25::udf25( )
 udf25::~udf25( )
 {
   delete m_fp;
-  free(m_udfcache);
+
+  struct udf_cache * cache = (struct udf_cache *) m_udfcache;
+
+  if (!cache)
+    return;
+
+  if (cache->lbs)
+  {
+    for (int n = 0; n < cache->lb_num; n++)
+    {
+      free(cache->lbs[n].data_base);
+    }
+    free(cache->lbs);
+  }
+
+  free(cache->maps);
+  free(cache);
 }
 
 UDF_FILE udf25::UDFFindFile( const char* filename, uint64_t *filesize )

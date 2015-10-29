@@ -18,20 +18,24 @@
  *
  */
 
-#include "GUIDialogPVRGuideInfo.h"
 #include "Application.h"
-#include "guilib/GUIWindowManager.h"
 #include "dialogs/GUIDialogOK.h"
 #include "dialogs/GUIDialogYesNo.h"
+#include "epg/EpgInfoTag.h"
+#include "guilib/GUIWindowManager.h"
 #include "guilib/LocalizeStrings.h"
 #include "utils/StringUtils.h"
+#include "utils/Variant.h"
 
 #include "pvr/PVRManager.h"
 #include "pvr/channels/PVRChannelGroupsContainer.h"
-#include "epg/EpgInfoTag.h"
 #include "pvr/timers/PVRTimers.h"
 #include "pvr/timers/PVRTimerInfoTag.h"
 #include "pvr/windows/GUIWindowPVRBase.h"
+
+#include "GUIDialogPVRGuideInfo.h"
+
+#include <utility>
 
 using namespace PVR;
 using namespace EPG;
@@ -43,7 +47,7 @@ using namespace EPG;
 #define CONTROL_BTN_PLAY_RECORDING      8
 
 CGUIDialogPVRGuideInfo::CGUIDialogPVRGuideInfo(void)
-    : CGUIDialog(WINDOW_DIALOG_PVR_GUIDE_INFO, "DialogPVRGuideInfo.xml")
+    : CGUIDialog(WINDOW_DIALOG_PVR_GUIDE_INFO, "DialogPVRInfo.xml")
     , m_progItem(new CFileItem)
 {
 }
@@ -63,59 +67,28 @@ bool CGUIDialogPVRGuideInfo::ActionStartTimer(const CEpgInfoTagPtr &tag)
   if (!channel || !g_PVRManager.CheckParentalLock(channel))
     return false;
 
-  // prompt user for confirmation of channel record
-  CGUIDialogYesNo* pDialog = (CGUIDialogYesNo*)g_windowManager.GetWindow(WINDOW_DIALOG_YES_NO);
+  Close();
 
-  if (pDialog)
-  {
-    pDialog->SetHeading(264);
-    pDialog->SetLine(0, "");
-    pDialog->SetLine(1, tag->Title());
-    pDialog->SetLine(2, "");
-    pDialog->DoModal();
-
-    if (pDialog->IsConfirmed())
-    {
-      Close();
-      CPVRTimerInfoTagPtr newTimer = CPVRTimerInfoTag::CreateFromEpg(tag);
-      if (newTimer)
-      {
-        bReturn = CPVRTimers::AddTimer(newTimer);
-      }
-      else
-      {
-        bReturn = false;
-      }
-    }
-  }
+  CPVRTimerInfoTagPtr newTimer = CPVRTimerInfoTag::CreateFromEpg(tag);
+  if (newTimer)
+    bReturn = CPVRTimers::AddTimer(newTimer);
+  else
+    bReturn = false;
 
   return bReturn;
 }
 
 bool CGUIDialogPVRGuideInfo::ActionCancelTimer(CFileItemPtr timer)
 {
-  bool bReturn = false;
+  bool bReturn(false);
   if (!timer || !timer->HasPVRTimerInfoTag())
-  {
     return bReturn;
-  }
 
-  // prompt user for confirmation of timer deletion
-  CGUIDialogYesNo* pDialog = (CGUIDialogYesNo*)g_windowManager.GetWindow(WINDOW_DIALOG_YES_NO);
-
-  if (pDialog)
+  bool bDeleteSchedule(false);
+  if (CGUIWindowPVRBase::ConfirmDeleteTimer(timer.get(), bDeleteSchedule))
   {
-    pDialog->SetHeading(265);
-    pDialog->SetLine(0, "");
-    pDialog->SetLine(1, timer->GetPVRTimerInfoTag()->m_strTitle);
-    pDialog->SetLine(2, "");
-    pDialog->DoModal();
-
-    if (pDialog->IsConfirmed())
-    {
-      Close();
-      bReturn = CPVRTimers::DeleteTimer(*timer);
-    }
+    Close();
+    bReturn = CPVRTimers::DeleteTimer(*timer, false, bDeleteSchedule);
   }
 
   return bReturn;
@@ -146,7 +119,7 @@ bool CGUIDialogPVRGuideInfo::OnClickButtonRecord(CGUIMessage &message)
     if (!tag || !tag->HasPVRChannel())
     {
       /* invalid channel */
-      CGUIDialogOK::ShowAndGetInput(19033, 19067);
+      CGUIDialogOK::ShowAndGetInput(CVariant{19033}, CVariant{19067});
       Close();
       return bReturn;
     }
@@ -186,7 +159,7 @@ bool CGUIDialogPVRGuideInfo::OnClickButtonPlay(CGUIMessage &message)
     if (ret == PLAYBACK_FAIL)
     {
       std::string msg = StringUtils::Format(g_localizeStrings.Get(19035).c_str(), g_localizeStrings.Get(19029).c_str()); // Channel could not be played. Check the log for details.
-      CGUIDialogOK::ShowAndGetInput(19033, msg);
+      CGUIDialogOK::ShowAndGetInput(CVariant{19033}, CVariant{std::move(msg)});
     }
     else if (ret == PLAYBACK_OK)
     {
@@ -272,17 +245,18 @@ void CGUIDialogPVRGuideInfo::OnInitWindow()
   if (!match || !match->HasPVRTimerInfoTag())
   {
     /* no timer present on this tag */
-    if (tag->StartAsLocalTime() < CDateTime::GetCurrentDateTime())
-      SET_CONTROL_LABEL(CONTROL_BTN_RECORD, 264);    // Record
-    else
-      SET_CONTROL_LABEL(CONTROL_BTN_RECORD, 19061);  // Add timer
+    SET_CONTROL_LABEL(CONTROL_BTN_RECORD, 264);      // Record
   }
   else
   {
     /* timer present on this tag */
     if (tag->StartAsLocalTime() < CDateTime::GetCurrentDateTime())
       SET_CONTROL_LABEL(CONTROL_BTN_RECORD, 19059);  // Stop recording
-    else
+    else if (match->HasPVRTimerInfoTag() &&
+             match->GetPVRTimerInfoTag()->HasTimerType() &&
+             !match->GetPVRTimerInfoTag()->GetTimerType()->IsReadOnly())
       SET_CONTROL_LABEL(CONTROL_BTN_RECORD, 19060);  // Delete timer
+    else
+      SET_CONTROL_HIDDEN(CONTROL_BTN_RECORD);
   }
 }

@@ -22,11 +22,13 @@
 \brief
 */
 #pragma once
-#include "dbwrappers/Database.h"
-#include "Album.h"
+#include <utility>
+
 #include "addons/Scraper.h"
-#include "utils/SortUtils.h"
+#include "Album.h"
+#include "dbwrappers/Database.h"
 #include "MusicDbUrl.h"
+#include "utils/SortUtils.h"
 
 class CArtist;
 class CFileItem;
@@ -123,7 +125,6 @@ public:
    \param iEndOffset [in] the end offset of the song (when using a single audio file with .cue)
    \param dtLastPlayed [in] the time the song was last played
    \param rating [in] a rating for the song
-   \param iKaraokeNumber [in] the karaoke id of the song
    \return the id of the song
    */
   int AddSong(const int idAlbum,
@@ -136,8 +137,7 @@ public:
               const std::string &artistString, const std::vector<std::string>& genres,
               int iTrack, int iDuration, int iYear,
               const int iTimesPlayed, int iStartOffset, int iEndOffset,
-              const CDateTime& dtLastPlayed,
-              char rating, int iKaraokeNumber);
+              const CDateTime& dtLastPlayed, char rating);
   bool GetSong(int idSong, CSong& song);
 
   /*! \brief Update a song in the database.
@@ -171,7 +171,6 @@ public:
    \param iEndOffset [in] the end offset of the song (when using a single audio file with .cue)
    \param dtLastPlayed [in] the time the song was last played
    \param rating [in] a rating for the song
-   \param iKaraokeNumber [in] the karaoke id of the song
    \return the id of the song
    */
   int UpdateSong(int idSong,
@@ -181,15 +180,14 @@ public:
                  const std::string& artistString, const std::vector<std::string>& genres,
                  int iTrack, int iDuration, int iYear,
                  int iTimesPlayed, int iStartOffset, int iEndOffset,
-                 const CDateTime& dtLastPlayed,
-                 char rating, int iKaraokeNumber);
+                 const CDateTime& dtLastPlayed, char rating);
 
   //// Misc Song
   bool GetSongByFileName(const std::string& strFileName, CSong& song, int startOffset = 0);
   bool GetSongsByPath(const std::string& strPath, MAPSONGS& songs, bool bAppendToMap = false);
   bool Search(const std::string& search, CFileItemList &items);
   bool RemoveSongsFromPath(const std::string &path, MAPSONGS& songs, bool exact=true);
-  bool SetSongRating(const std::string &filePath, char rating);
+  bool SetSongUserrating(const std::string &filePath, char rating);
   int  GetSongByArtistAndAlbumAndTitle(const std::string& strArtist, const std::string& strAlbum, const std::string& strTitle);
 
   /////////////////////////////////////////////////
@@ -376,16 +374,6 @@ public:
   bool ScraperInUse(const std::string &scraperID) const;
 
   /////////////////////////////////////////////////
-  // Karaoke
-  /////////////////////////////////////////////////
-  void AddKaraokeData(int idSong, int iKaraokeNumber);
-  bool GetSongByKaraokeNumber( int number, CSong& song );
-  bool SetKaraokeSongDelay( int idSong, int delay );
-  int GetKaraokeSongsCount();
-  void ExportKaraokeInfo(const std::string &outFile, bool asHTML );
-  void ImportKaraokeInfo(const std::string &inputFile );
-
-  /////////////////////////////////////////////////
   // Filters
   /////////////////////////////////////////////////
   bool GetItems(const std::string &strBaseDir, CFileItemList &items, const Filter &filter = Filter(), const SortDescription &sortDescription = SortDescription());
@@ -395,7 +383,7 @@ public:
   /////////////////////////////////////////////////
   // XML
   /////////////////////////////////////////////////
-  void ExportToXML(const std::string &xmlFile, bool singleFiles = false, bool images=false, bool overwrite=false);
+  void ExportToXML(const std::string &xmlFile, bool singleFile = false, bool images=false, bool overwrite=false);
   void ImportFromXML(const std::string &xmlFile);
 
   /////////////////////////////////////////////////
@@ -479,7 +467,7 @@ protected:
 
   virtual void CreateTables();
   virtual void CreateAnalytics();
-  virtual int GetMinSchemaVersion() const { return 18; }
+  virtual int GetMinSchemaVersion() const { return 32; }
   virtual int GetSchemaVersion() const;
 
   const char *GetBaseDBName() const { return "MyMusic"; };
@@ -497,6 +485,12 @@ private:
   CAlbum GetAlbumFromDataset(dbiplus::Dataset* pDS, int offset = 0, bool imageURL = false);
   CAlbum GetAlbumFromDataset(const dbiplus::sql_record* const record, int offset = 0, bool imageURL = false);
   CArtistCredit GetArtistCreditFromDataset(const dbiplus::sql_record* const record, int offset = 0);
+  /*! \brief Updates the dateAdded field in the song table for the file
+  with the given songId and the given path based on the files modification date
+  \param songId id of the song in the song table
+  \param strFileNameAndPath path to the file
+  */
+  void UpdateFileDateAdded(int songId, const std::string& strFileNameAndPath);
   void GetFileItemFromDataset(CFileItem* item, const CMusicDbUrl &baseUrl);
   void GetFileItemFromDataset(const dbiplus::sql_record* const record, CFileItem* item, const CMusicDbUrl &baseUrl);
   CSong GetAlbumInfoSongFromDataset(const dbiplus::sql_record* const record, int offset = 0);
@@ -529,18 +523,16 @@ private:
     song_iStartOffset,
     song_iEndOffset,
     song_lastplayed,
-    song_rating,
+    song_userrating,
     song_comment,
     song_idAlbum,
     song_strAlbum,
     song_strPath,
-    song_iKarNumber,
-    song_iKarDelay,
-    song_strKarEncoding,
     song_bCompilation,
     song_strAlbumArtists,
     song_strAlbumReleaseType,
     song_mood,
+    song_dateAdded,
     song_enumCount // end of the enum, do not add past here
   } SongFields;
 
@@ -565,6 +557,8 @@ private:
     album_bCompilation,
     album_iTimesPlayed,
     album_strReleaseType,
+    album_dtDateAdded,
+    album_dtLastPlayed,
     album_enumCount // end of the enum, do not add past here
   } AlbumFields;
 
@@ -598,6 +592,7 @@ private:
     artist_strYearsActive,
     artist_strImage,
     artist_strFanart,
+    artist_dtDateAdded,
     artist_enumCount // end of the enum, do not add past here
   } ArtistFields;
 

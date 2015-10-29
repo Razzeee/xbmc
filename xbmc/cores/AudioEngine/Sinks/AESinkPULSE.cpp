@@ -22,10 +22,9 @@
 #include "AESinkPULSE.h"
 #include "utils/log.h"
 #include "Util.h"
+#include "utils/TimeUtils.h"
 #include "guilib/LocalizeStrings.h"
 #include "Application.h"
-
-using namespace std;
 
 static const char *ContextStateToString(pa_context_state s)
 {
@@ -374,8 +373,8 @@ static void SinkInfoRequestCallback(pa_context *c, const pa_sink_info *i, int eo
   {
     CAEDeviceInfo device;
     bool valid = true;
-    device.m_deviceName = string(i->name);
-    device.m_displayName = string(i->description);
+    device.m_deviceName = std::string(i->name);
+    device.m_displayName = std::string(i->description);
     if (i->active_port && i->active_port->description)
       device.m_displayNameExtra = std::string((i->active_port->description)).append(" (PULSEAUDIO)");
     else
@@ -441,11 +440,14 @@ CAESinkPULSE::CAESinkPULSE()
   m_MainLoop = NULL;
   m_BytesPerSecond = 0;
   m_BufferSize = 0;
+  m_filled_bytes = 0;
+  m_lastPackageStamp = 0;
   m_Channels = 0;
   m_Stream = NULL;
   m_Context = NULL;
   m_IsStreamPaused = false;
   m_volume_needs_update = false;
+  m_periodSize = 0;
   pa_cvolume_init(&m_Volume);
 }
 
@@ -463,9 +465,12 @@ bool CAESinkPULSE::Initialize(AEAudioFormat &format, std::string &device)
   m_passthrough = false;
   m_BytesPerSecond = 0;
   m_BufferSize = 0;
+  m_filled_bytes = 0;
+  m_lastPackageStamp = 0;
   m_Channels = 0;
   m_Stream = NULL;
   m_Context = NULL;
+  m_periodSize = 0;
 
   if (!SetupContext(NULL, &m_Context, &m_MainLoop))
   {
@@ -588,23 +593,27 @@ bool CAESinkPULSE::Initialize(AEAudioFormat &format, std::string &device)
   pa_stream_set_write_callback(m_Stream, StreamRequestCallback, m_MainLoop);
   pa_stream_set_latency_update_callback(m_Stream, StreamLatencyUpdateCallback, m_MainLoop);
 
-  pa_buffer_attr buffer_attr;
-
-  // 200ms max latency
-  // 50ms min packet size
-  if(sinkStruct.isHWDevice || isDefaultDevice)
+  // default buffer construction
+  // align with AE's max buffer
+  unsigned int latency = m_BytesPerSecond / 2.5; // 400 ms
+  unsigned int process_time = latency / 4; // 100 ms
+  if(sinkStruct.isHWDevice)
   {
-    unsigned int latency = m_BytesPerSecond / 5;
-    unsigned int process_time = latency / 4;
-    memset(&buffer_attr, 0, sizeof(buffer_attr));
-    buffer_attr.tlength = (uint32_t) latency;
-    buffer_attr.minreq = (uint32_t) process_time;
-    buffer_attr.maxlength = (uint32_t) -1;
-    buffer_attr.prebuf = (uint32_t) -1;
-    buffer_attr.fragsize = (uint32_t) latency;
+    // on hw devices buffers can be further reduced
+    // 200ms max latency
+    // 50ms min packet size
+    latency = m_BytesPerSecond / 5;
+    process_time = latency / 4;
   }
 
-  if (pa_stream_connect_playback(m_Stream, isDefaultDevice ? NULL : device.c_str(), sinkStruct.isHWDevice ? &buffer_attr : NULL, ((pa_stream_flags)(PA_STREAM_INTERPOLATE_TIMING | PA_STREAM_AUTO_TIMING_UPDATE | PA_STREAM_ADJUST_LATENCY)), NULL, NULL) < 0)
+  pa_buffer_attr buffer_attr;
+  buffer_attr.fragsize = latency;
+  buffer_attr.maxlength = (uint32_t) -1;
+  buffer_attr.minreq = process_time;
+  buffer_attr.prebuf = (uint32_t) -1;
+  buffer_attr.tlength = latency;
+
+  if (pa_stream_connect_playback(m_Stream, isDefaultDevice ? NULL : device.c_str(), &buffer_attr, ((pa_stream_flags)(PA_STREAM_INTERPOLATE_TIMING | PA_STREAM_AUTO_TIMING_UPDATE | PA_STREAM_ADJUST_LATENCY)), NULL, NULL) < 0)
   {
     CLog::Log(LOGERROR, "PulseAudio: Failed to connect stream to output");
     pa_threaded_mainloop_unlock(m_MainLoop);
@@ -641,6 +650,7 @@ bool CAESinkPULSE::Initialize(AEAudioFormat &format, std::string &device)
   {
     unsigned int packetSize = a->minreq;
     m_BufferSize = a->tlength;
+    m_periodSize = a->minreq;
 
     format.m_frames = packetSize / frameSize;
   }
@@ -688,6 +698,9 @@ void CAESinkPULSE::Deinitialize()
   CSingleLock lock(m_sec);
   m_IsAllocated = false;
   m_passthrough = false;
+  m_periodSize = 0;
+  m_filled_bytes = 0;
+  m_lastPackageStamp = 0;
 
   if (m_Stream)
     Drain();
@@ -724,25 +737,24 @@ void CAESinkPULSE::GetDelay(AEDelayStatus& status)
     status.SetDelay(0);
     return;
   }
-  int error = 0;
-  pa_usec_t latency = (pa_usec_t) -1;
+
   pa_threaded_mainloop_lock(m_MainLoop);
-  if ((error = pa_stream_get_latency(m_Stream, &latency, NULL)) < 0)
-  {
-    if (error == -PA_ERR_NODATA)
-    {
-      WaitForOperation(pa_stream_update_timing_info(m_Stream, NULL,NULL), m_MainLoop, "Update Timing Information");
-      if ((error = pa_stream_get_latency(m_Stream, &latency, NULL)) < 0)
-      {
-        CLog::Log(LOGDEBUG, "GetDelay - Failed to get Latency %d", error); 
-      }
-    }
-  }
-  if (error < 0 )
-    latency = (pa_usec_t) 0;
+  const pa_timing_info* pti = pa_stream_get_timing_info(m_Stream);
+  // only incorporate local sink delay + internal PA transport delay
+  double sink_delay = (pti->configured_sink_usec / 1000000.0);
+  double transport_delay = pti->transport_usec / 1000000.0;
+
+  uint64_t diff = CurrentHostCounter() - m_lastPackageStamp;
+  unsigned int bytes_played = (unsigned int) ((double) diff * (double) m_BytesPerSecond  / (double) CurrentHostFrequency() + 0.5);
+
+  int buffer_delay = m_filled_bytes - bytes_played;
+  if (buffer_delay < 0)
+    buffer_delay = 0;
 
   pa_threaded_mainloop_unlock(m_MainLoop);
-  status.SetDelay(latency / 1000000.0);
+
+  double delay = buffer_delay / (double) m_BytesPerSecond + sink_delay + transport_delay;
+  status.SetDelay(delay);
 }
 
 double CAESinkPULSE::GetCacheTotal()
@@ -765,10 +777,11 @@ unsigned int CAESinkPULSE::AddPackets(uint8_t **data, unsigned int frames, unsig
   unsigned int available = frames * m_format.m_frameSize;
   unsigned int length = 0;
   void *buffer = data[0]+offset*m_format.m_frameSize;
-  // revisit me after Gotham - should use a callback for the write function
-  while ((length = pa_stream_writable_size(m_Stream)) == 0)
+  // care a bit for fragmentation
+  while ((length = pa_stream_writable_size(m_Stream)) < m_periodSize)
     pa_threaded_mainloop_wait(m_MainLoop);
 
+  unsigned int free = length;
   length =  std::min((unsigned int)length, available);
 
   int error = pa_stream_write(m_Stream, buffer, length, NULL, 0, PA_SEEK_RELATIVE);
@@ -779,8 +792,11 @@ unsigned int CAESinkPULSE::AddPackets(uint8_t **data, unsigned int frames, unsig
     CLog::Log(LOGERROR, "CPulseAudioDirectSound::AddPackets - pa_stream_write failed\n");
     return 0;
   }
+  m_lastPackageStamp = CurrentHostCounter();
+  m_filled_bytes = m_BufferSize - (free - length);
+  unsigned int res = (unsigned int)(length / m_format.m_frameSize);
 
-  return (unsigned int)(length / m_format.m_frameSize);
+  return res;
 }
 
 void CAESinkPULSE::Drain()

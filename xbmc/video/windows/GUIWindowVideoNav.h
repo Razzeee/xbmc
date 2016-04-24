@@ -90,4 +90,5 @@ private:
   virtual SelectFirstUnwatchedItem GetSettingSelectFirstUnwatchedItem();
   virtual IncludeAllSeasonsAndSpecials GetSettingIncludeAllSeasonsAndSpecials();
   virtual int GetFirstUnwatchedItemIndex(bool includeAllSeasons, bool includeSpecials);
+  CVideoInfoTag RetrieveTag(const std::string& content, const std::string& url) const;
 };

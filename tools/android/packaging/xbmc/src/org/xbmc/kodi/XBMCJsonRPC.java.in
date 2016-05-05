@@ -169,6 +169,9 @@ public class XBMCJsonRPC
 
   public Bitmap getBitmap(String src)
   {
+    if (src.isEmpty())
+      return null;
+
     try
     {
       JSONObject req = request_object("{\"jsonrpc\": \"2.0\", \"method\": \"Files.PrepareDownload\", \"params\": { \"path\": \""
@@ -195,6 +198,9 @@ public class XBMCJsonRPC
 
   public String getBitmapUrl(String src)
   {
+    if (src.isEmpty())
+      return null;
+
     try
     {
       JSONObject req = request_object("{\"jsonrpc\": \"2.0\", \"method\": \"Files.PrepareDownload\", \"params\": { \"path\": \""

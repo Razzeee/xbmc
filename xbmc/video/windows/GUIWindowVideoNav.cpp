@@ -132,6 +132,7 @@ bool CGUIWindowVideoNav::OnMessage(CGUIMessage& message)
 
       if (message.GetStringParam(0) != "")
       {
+        CLog::Log(LOGDEBUG, "OnMessage 1");
         CURL url(message.GetStringParam(0));
 
         int i = 0;
@@ -144,6 +145,7 @@ bool CGUIWindowVideoNav::OnMessage(CGUIMessage& message)
             i = -1;
             if (url.GetOption("showinfo") == "true")
             {
+              CLog::Log(LOGDEBUG, "OnMessage 2");
               ADDON::ScraperPtr scrapper;
               OnItemInfo(*pItem, scrapper);
             }
@@ -156,6 +158,7 @@ bool CGUIWindowVideoNav::OnMessage(CGUIMessage& message)
           CFileItem* item = new CFileItem(path, URIUtils::HasSlashAtEnd(path));
           if (item->IsVideoDb())
           {
+            CLog::Log(LOGDEBUG, "OnMessage 3");
             auto retrieveTag = [](const std::string& content, const std::string& url)
             {
               CVideoInfoTag tag;
@@ -186,18 +189,20 @@ bool CGUIWindowVideoNav::OnMessage(CGUIMessage& message)
                 return tag;
 
               tag = videoDatabase.GetDetailsByTypeAndId(type, idDb);
-
+              CLog::Log(LOGDEBUG, "OnMessage 5");
               return tag;
             };
 
             *(item->GetVideoInfoTag()) = retrieveTag(m_vecItems->GetContent(), item->GetPath());
             item->SetPath(item->GetVideoInfoTag()->m_strFileNameAndPath);
+            CLog::Log(LOGDEBUG, "OnMessage 6");
           }
+          CLog::Log(LOGDEBUG, "OnMessage 4");
           ADDON::ScraperPtr scrapper;
           OnItemInfo(*item, scrapper);
         }
       }
-
+      CLog::Log(LOGDEBUG, "OnMessage 7");
       return true;
     }
     break;
@@ -440,20 +445,23 @@ bool CGUIWindowVideoNav::GetDirectory(const std::string &strDirectory, CFileItem
         // grab the show thumb
         CVideoInfoTag details;
         m_database.GetTvShowInfo("", details, params.GetTvShowId());
+        CLog::Log(LOGDEBUG, "Getdir 1");
         std::map<std::string, std::string> art;
         if (m_database.GetArtForItem(details.m_iDbId, details.m_type, art))
         {
+          CLog::Log(LOGDEBUG, "Getdir 2");
           items.AppendArt(art, details.m_type);
           items.SetArtFallback("fanart", "tvshow.fanart");
           if (node == NODE_TYPE_SEASONS)
           { // set an art fallback for "thumb"
+            CLog::Log(LOGDEBUG, "Getdir 3");
             if (items.HasArt("tvshow.poster"))
               items.SetArtFallback("thumb", "tvshow.poster");
             else if (items.HasArt("tvshow.banner"))
               items.SetArtFallback("thumb", "tvshow.banner");
           }
         }
-
+        CLog::Log(LOGDEBUG, "Getdir 4");
         // Grab fanart data
         items.SetProperty("fanart_color1", details.m_fanart.GetColor(0));
         items.SetProperty("fanart_color2", details.m_fanart.GetColor(1));
@@ -462,10 +470,11 @@ bool CGUIWindowVideoNav::GetDirectory(const std::string &strDirectory, CFileItem
         // save the show description (showplot)
         items.SetProperty("showplot", details.m_strPlot);
         items.SetProperty("showtitle", details.m_strShowTitle);
-
+        CLog::Log(LOGDEBUG, "Getdir 5");
         // the container folder thumb is the parent (i.e. season or show)
         if (itemsSize && (node == NODE_TYPE_EPISODES || node == NODE_TYPE_RECENTLY_ADDED_EPISODES))
         {
+          CLog::Log(LOGDEBUG, "Getdir 6");
           items.SetContent("episodes");
 
           int seasonID = -1;
@@ -483,6 +492,7 @@ bool CGUIWindowVideoNav::GetDirectory(const std::string &strDirectory, CFileItem
           CGUIListItem::ArtMap seasonArt;
           if (seasonID > -1 && m_database.GetArtForItem(seasonID, MediaTypeSeason, seasonArt))
           {
+            CLog::Log(LOGDEBUG, "Getdir 7");
             items.AppendArt(seasonArt, MediaTypeSeason);
             // set an art fallback for "thumb"
             if (items.HasArt("season.poster"))

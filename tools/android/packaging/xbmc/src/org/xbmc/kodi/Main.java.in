@@ -28,6 +28,7 @@ public class Main extends NativeActivity implements Choreographer.FrameCallback
   private View thisView = null;
   private Handler handler = new Handler();
   private Intent mNewIntent = null;
+  private int mNewIntentDelay = 0;
 
   native void _onNewIntent(Intent intent);
   native void _doFrame(long frameTimeNanos);
@@ -131,6 +132,14 @@ public class Main extends NativeActivity implements Choreographer.FrameCallback
 
     mJsonRPC = new XBMCJsonRPC();
 
+    // Delayed Intent
+    if (getIntent().getData() != null)
+    {
+      mNewIntent = new Intent(getIntent());
+      mNewIntentDelay = 5000;
+      getIntent().setData(null);
+    }
+
     thisView = getWindow().getDecorView();
     thisView.setOnSystemUiVisibilityChangeListener(new View.OnSystemUiVisibilityChangeListener()
           {
@@ -170,6 +179,7 @@ public class Main extends NativeActivity implements Choreographer.FrameCallback
     super.onNewIntent(intent);
     // Delay until after Resume
     mNewIntent = intent;
+    mNewIntentDelay = 500;
   }
 
   @Override
@@ -226,7 +236,7 @@ public class Main extends NativeActivity implements Choreographer.FrameCallback
               mNewIntent = null;
             }
           }
-        }, 500);
+        }, mNewIntentDelay);
     }
   }
 
@@ -243,6 +253,18 @@ public class Main extends NativeActivity implements Choreographer.FrameCallback
     manager.unregisterInputDeviceListener(mInputDeviceListener);
 
     getApplicationContext().getContentResolver().unregisterContentObserver(mSettingsContentObserver);
+    handler.removeCallbacks(leanbackUpdateRunnable);
+
+    new Thread() {
+      public void run()
+      {
+        try
+        {
+          sleep(5000);
+          android.os.Process.killProcess(android.os.Process.myPid());
+        } catch (Exception e) {}
+      }
+    }.start();
     super.onDestroy();
   }
 

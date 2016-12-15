@@ -46,6 +46,7 @@
 #include "messaging/ApplicationMessenger.h"
 #include "utils/StringUtils.h"
 #include "utils/Variant.h"
+#include "utils/URIUtils.h"
 #include "AppParamParser.h"
 #include "platform/XbmcContext.h"
 #include <android/bitmap.h>
@@ -79,6 +80,7 @@
 #include "platform/android/jni/Window.h"
 #include "platform/android/jni/WindowManager.h"
 #include "platform/android/jni/KeyEvent.h"
+#include "URL.h"
 #include "AndroidKey.h"
 
 #include "CompileInfo.h"
@@ -224,7 +226,7 @@ void CXBMCApp::onDestroy()
   // been destroyed.
   if (!m_exiting)
   {
-    XBMC_Stop();
+    CApplicationMessenger::GetInstance().PostMsg(TMSG_QUIT);
     pthread_join(m_thread, NULL);
     android_printf(" => XBMC finished");
   }
@@ -261,7 +263,6 @@ void CXBMCApp::onCreateWindow(ANativeWindow* window)
   if(!m_firstrun)
   {
     XBMC_SetupDisplay();
-    XBMC_Pause(false);
   }
 }
 
@@ -282,7 +283,6 @@ void CXBMCApp::onDestroyWindow()
   {
     XBMC_DestroyDisplay();
     m_window = NULL;
-    XBMC_Pause(true);
   }
 }
 
@@ -385,26 +385,6 @@ void CXBMCApp::run()
   SetupEnv();
   XBMC::Context context;
 
-  CJNIIntent startIntent = getIntent();
-
-  android_printf("%s Started with action: %s\n", CCompileInfo::GetAppName(), startIntent.getAction().c_str());
-
-  std::string filenameToPlay = GetFilenameFromIntent(startIntent);
-  if (!filenameToPlay.empty())
-  {
-    int argc = 2;
-    const char** argv = (const char**) malloc(argc*sizeof(char*));
-
-    std::string exe_name(CCompileInfo::GetAppName());
-    argv[0] = exe_name.c_str();
-    argv[1] = filenameToPlay.c_str();
-
-    CAppParamParser appParamParser;
-    appParamParser.Parse((const char **)argv, argc);
-
-    free(argv);
-  }
-
   m_firstrun=false;
   android_printf(" => running XBMC_Run...");
   try
@@ -422,16 +402,6 @@ void CXBMCApp::run()
   // onPause(), onLostFocus(), onDestroyWindow(), onStop(), onDestroy().
   ANativeActivity_finish(m_activity);
   m_exiting=true;
-}
-
-void CXBMCApp::XBMC_Pause(bool pause)
-{
-  android_printf("XBMC_Pause(%s)", pause ? "true" : "false");
-}
-
-void CXBMCApp::XBMC_Stop()
-{
-  CApplicationMessenger::GetInstance().PostMsg(TMSG_QUIT);
 }
 
 bool CXBMCApp::XBMC_SetupDisplay()
@@ -561,7 +531,7 @@ std::vector<androidPackage> CXBMCApp::GetApplications()
     CJNIList<CJNIApplicationInfo> packageList = GetPackageManager().getInstalledApplications(CJNIPackageManager::GET_ACTIVITIES);
     int numPackages = packageList.size();
     for (int i = 0; i < numPackages; i++)
-    {            
+    {
       CJNIIntent intent = GetPackageManager().getLaunchIntentForPackage(packageList.get(i).packageName);
       if (!intent && CJNIBuild::SDK_INT >= 21)
         intent = GetPackageManager().getLeanbackLaunchIntentForPackage(packageList.get(i).packageName);
@@ -603,7 +573,7 @@ bool CXBMCApp::StartActivity(const std::string &package, const std::string &inte
     if (!jniURI)
       return false;
 
-    newIntent.setDataAndType(jniURI, dataType); 
+    newIntent.setDataAndType(jniURI, dataType);
   }
 
   newIntent.setPackage(package);
@@ -730,7 +700,7 @@ float CXBMCApp::GetSystemVolume()
   CJNIAudioManager audioManager(getSystemService("audio"));
   if (audioManager)
     return (float)audioManager.getStreamVolume() / GetMaxSystemVolume();
-  else 
+  else
   {
     android_printf("CXBMCApp::GetSystemVolume: Could not get Audio Manager");
     return 0;
@@ -806,10 +776,25 @@ void CXBMCApp::onReceive(CJNIIntent intent)
 void CXBMCApp::onNewIntent(CJNIIntent intent)
 {
   std::string action = intent.getAction();
+  CXBMCApp::android_printf("Got Intent: %s", action.c_str());
+  std::string targetFile = GetFilenameFromIntent(intent);
+  CXBMCApp::android_printf("-- targetFile: %s", targetFile.c_str());
   if (action == "android.intent.action.VIEW")
   {
     CApplicationMessenger::GetInstance().SendMsg(TMSG_MEDIA_PLAY, 1, 0, static_cast<void*>(
                                          new CFileItem(GetFilenameFromIntent(intent))));
+  }
+  else if (action == "android.intent.action.GET_CONTENT")
+  {
+    CURL targeturl(targetFile);
+    std::vector<std::string> params;
+    params.push_back(targeturl.Get());
+    params.push_back("return");
+    if (targeturl.IsProtocol("videodb"))
+      CApplicationMessenger::GetInstance().PostMsg(TMSG_GUI_ACTIVATE_WINDOW, WINDOW_VIDEO_NAV, 0, nullptr, "", params);
+    else if (targeturl.IsProtocol("musicdb"))
+      CApplicationMessenger::GetInstance().PostMsg(TMSG_GUI_ACTIVATE_WINDOW, WINDOW_MUSIC_NAV, 0, nullptr, "", params);
+
   }
 }
 

@@ -721,6 +721,7 @@ public:
   bool GetCountriesNav(const std::string& strBaseDir, CFileItemList& items, int idContent=-1, const Filter &filter = Filter(), bool countOnly = false);
   bool GetStudiosNav(const std::string& strBaseDir, CFileItemList& items, int idContent=-1, const Filter &filter = Filter(), bool countOnly = false);
   bool GetYearsNav(const std::string& strBaseDir, CFileItemList& items, int idContent=-1, const Filter &filter = Filter());
+  bool GetMpaaNav(const std::string& strBaseDir, CFileItemList& items, int idContent = -1, const Filter &filter = Filter());
   bool GetActorsNav(const std::string& strBaseDir, CFileItemList& items, int idContent=-1, const Filter &filter = Filter(), bool countOnly = false);
   bool GetDirectorsNav(const std::string& strBaseDir, CFileItemList& items, int idContent=-1, const Filter &filter = Filter(), bool countOnly = false);
   bool GetWritersNav(const std::string& strBaseDir, CFileItemList& items, int idContent=-1, const Filter &filter = Filter(), bool countOnly = false);

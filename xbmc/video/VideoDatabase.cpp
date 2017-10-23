@@ -6376,6 +6376,165 @@ bool CVideoDatabase::GetYearsNav(const std::string& strBaseDir, CFileItemList& i
   return false;
 }
 
+
+bool CVideoDatabase::GetMpaaNav(const std::string& strBaseDir, CFileItemList& items, int idContent /* = -1 */, const Filter &filter /* = Filter() */)
+{
+  try
+  {
+    if (NULL == m_pDB.get()) return false;
+    if (NULL == m_pDS.get()) return false;
+
+    std::string strSQL;
+    Filter extFilter = filter;
+    if (CProfilesManager::GetInstance().GetMasterProfile().getLockMode() != LOCK_MODE_EVERYONE && !g_passwordManager.bMasterUser)
+    {
+      if (idContent == VIDEODB_CONTENT_MOVIES)
+      {
+        strSQL = PrepareSQL("select movie_view.c%02d, path.strPath, files.playCount from movie_view ", VIDEODB_ID_MPAA);
+        extFilter.AppendJoin("join files on files.idFile = movie_view.idFile join path on files.idPath = path.idPath");
+      }
+      else if (idContent == VIDEODB_CONTENT_TVSHOWS)
+      {
+        strSQL = PrepareSQL("select tvshow_view.c%02d, path.strPath from tvshow_view ", VIDEODB_ID_TV_MPAA);
+        extFilter.AppendJoin("join episode_view on episode_view.idShow = tvshow_view.idShow join files on files.idFile = episode_view.idFile join path on files.idPath = path.idPath");
+      }
+      else
+        return false;
+    }
+    else
+    {
+      std::string group;
+      if (idContent == VIDEODB_CONTENT_MOVIES)
+      {
+        strSQL = PrepareSQL("select movie_view.c%02d, count(1), count(files.playCount) from movie_view ", VIDEODB_ID_MPAA);
+        extFilter.AppendJoin("join files on files.idFile = movie_view.idFile");
+        extFilter.AppendGroup(PrepareSQL("movie_view.c%02d", VIDEODB_ID_MPAA));
+      }
+      else if (idContent == VIDEODB_CONTENT_TVSHOWS)
+      {
+        strSQL = PrepareSQL("select distinct tvshow_view.c%02d from tvshow_view", VIDEODB_ID_TV_MPAA);
+        extFilter.AppendGroup(PrepareSQL("tvshow_view.c%02d", VIDEODB_ID_TV_MPAA));
+      }
+      else
+        return false;
+    }
+
+    CVideoDbUrl videoUrl;
+    if (!BuildSQL(strBaseDir, strSQL, extFilter, strSQL, videoUrl))
+      return false;
+
+    int iRowsFound = RunQuery(strSQL);
+    if (iRowsFound <= 0)
+      return iRowsFound == 0;
+
+    if (CProfilesManager::GetInstance().GetMasterProfile().getLockMode() != LOCK_MODE_EVERYONE && !g_passwordManager.bMasterUser)
+    {
+      std::map<std::string, std::pair<std::string, int> > mapYears;
+      while (!m_pDS->eof())
+      {
+        std::string dateString = m_pDS->fv(0).get_asString();
+
+        auto it = mapYears.find(dateString);
+        if (it == mapYears.end())
+        {
+          // check path
+          if (g_passwordManager.IsDatabasePathUnlocked(std::string(m_pDS->fv("path.strPath").get_asString()), *CMediaSourceSettings::GetInstance().GetSources("video")))
+          {
+            std::string year = dateString;
+            if (idContent == VIDEODB_CONTENT_MOVIES || idContent == VIDEODB_CONTENT_MUSICVIDEOS)
+              mapYears.insert(std::pair<std::string, std::pair<std::string, int> >(dateString, std::pair<std::string, int>(year, m_pDS->fv(2).get_asInt())));
+            else
+              mapYears.insert(std::pair<std::string, std::pair<std::string, int> >(dateString, std::pair<std::string, int>(year, 0)));
+          }
+        }
+        m_pDS->next();
+      }
+      m_pDS->close();
+
+      for (const auto &i : mapYears)
+      {
+        if (i.first == "")
+          continue;
+        CFileItemPtr pItem(new CFileItem(i.second.first));
+
+        CVideoDbUrl itemUrl = videoUrl;
+        CSmartPlaylist *m_filter;
+        m_filter->SetType("movie");
+
+        CSmartPlaylistRule rule;
+        Field field = FieldMPAA;
+        CDatabaseQueryRule::SEARCH_OPERATOR ruleOperator = CDatabaseQueryRule::SEARCH_OPERATOR::OPERATOR_EQUALS;
+
+        rule.m_field = field;
+        rule.m_operator = ruleOperator;
+        m_filter->GetRuleCombination().AddRule(rule);
+        std::string path = StringUtils::Format("%i/", 1);
+        itemUrl.AppendPath(path);
+        pItem->SetPath(itemUrl.ToString());
+
+        pItem->m_bIsFolder = true;
+        if (idContent == VIDEODB_CONTENT_MOVIES || idContent == VIDEODB_CONTENT_MUSICVIDEOS)
+          pItem->GetVideoInfoTag()->SetPlayCount(i.second.second);
+        items.Add(pItem);
+      }
+    }
+    else
+    {
+      while (!m_pDS->eof())
+      {
+        std::string strLabel = m_pDS->fv(0).get_asString();
+
+        if (strLabel == "")
+        {
+          m_pDS->next();
+          continue;
+        }
+        CFileItemPtr pItem(new CFileItem(strLabel));
+
+        CVideoDbUrl itemUrl = videoUrl;
+
+        CSmartPlaylist *m_filter = new CSmartPlaylist();
+
+        CSmartPlaylistRule rule;
+        Field field = FieldMPAA;
+        CDatabaseQueryRule::SEARCH_OPERATOR ruleOperator = CDatabaseQueryRule::SEARCH_OPERATOR::OPERATOR_EQUALS;
+
+        rule.m_field = field;
+        rule.m_operator = ruleOperator;
+        m_filter->SetType("video");
+        m_filter->GetRuleCombination().AddRule(rule);
+        std::string json = "";
+        m_filter->SaveAsJson(json);
+
+        std::string path = StringUtils::Format("?xsp=%s", json);
+        itemUrl.AppendPath(path);
+        pItem->SetPath(itemUrl.ToString());
+
+        pItem->m_bIsFolder = true;
+        if (idContent == VIDEODB_CONTENT_MOVIES || idContent == VIDEODB_CONTENT_MUSICVIDEOS)
+        {
+          // fv(2) is the number of videos watched, fv(1) is the total number.  We set the playcount
+          // only if the number of videos watched is equal to the total number (i.e. every video watched)
+          pItem->GetVideoInfoTag()->SetPlayCount((m_pDS->fv(2).get_asInt() == m_pDS->fv(1).get_asInt()) ? 1 : 0);
+        }
+
+        items.Add(pItem);
+
+        m_pDS->next();
+      }
+      m_pDS->close();
+    }
+
+    return true;
+  }
+  catch (...)
+  {
+    CLog::Log(LOGERROR, "%s failed", __FUNCTION__);
+  }
+  return false;
+}
+
+
 bool CVideoDatabase::GetSeasonsNav(const std::string& strBaseDir, CFileItemList& items, int idActor, int idDirector, int idGenre, int idYear, int idShow, bool getLinkedMovies /* = true */)
 {
   // parse the base path to get additional filters
@@ -6618,6 +6777,8 @@ bool CVideoDatabase::GetItems(const std::string &strBaseDir, VIDEODB_CONTENT_TYP
     return GetSeasonsNav(strBaseDir, items);
   else if (StringUtils::EqualsNoCase(itemType, "genres"))
     return GetGenresNav(strBaseDir, items, mediaType, filter);
+  else if (StringUtils::EqualsNoCase(itemType, "mpaa"))
+    return GetMpaaNav(strBaseDir, items, mediaType, filter);
   else if (StringUtils::EqualsNoCase(itemType, "years"))
     return GetYearsNav(strBaseDir, items, mediaType, filter);
   else if (StringUtils::EqualsNoCase(itemType, "actors"))
@@ -6638,6 +6799,7 @@ bool CVideoDatabase::GetItems(const std::string &strBaseDir, VIDEODB_CONTENT_TYP
     return GetActorsNav(strBaseDir, items, mediaType, filter);
   else if (StringUtils::EqualsNoCase(itemType, "albums") && mediaType == VIDEODB_CONTENT_MUSICVIDEOS)
     return GetMusicVideoAlbumsNav(strBaseDir, items, -1, filter);
+
 
   return false;
 }

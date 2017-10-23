@@ -214,6 +214,11 @@ void CGUIDialogSmartPlaylistRule::OnBrowse()
     }
     iLabel = 562;
   }
+  else if (m_rule.m_field == FieldMpaa)
+  {
+    videodatabase.GetMpaaNav(basePath + "mpaa/", items, type);
+    iLabel = 20074;
+  }
   else if (m_rule.m_field == FieldDirector)
   {
     videodatabase.GetDirectorsNav(basePath + "directors/", items, type);

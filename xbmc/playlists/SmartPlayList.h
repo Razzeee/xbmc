@@ -165,6 +165,8 @@ public:
   // rule creation
   CDatabaseQueryRule *CreateRule() const override;
   CDatabaseQueryRuleCombination *CreateCombination() const override;
+
+  CSmartPlaylistRuleCombination &GetRuleCombination();
 private:
   friend class CGUIDialogSmartPlaylistEditor;
   friend class CGUIDialogMediaFilter;

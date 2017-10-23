@@ -55,7 +55,8 @@ namespace XFILE
       NODE_TYPE_SETS,
       NODE_TYPE_COUNTRY,
       NODE_TYPE_TAGS,
-      NODE_TYPE_INPROGRESS_TVSHOWS
+      NODE_TYPE_INPROGRESS_TVSHOWS,
+      NODE_TYPE_MPAA
     } NODE_TYPE;
 
     typedef struct {

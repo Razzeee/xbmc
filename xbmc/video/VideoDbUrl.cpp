@@ -129,6 +129,10 @@ bool CVideoDbUrl::parse()
       m_itemType = "countries";
       break;
 
+    case VIDEODATABASEDIRECTORY::NODE_TYPE_MPAA:
+      m_itemType = "mpaa";
+      break;
+
     case VIDEODATABASEDIRECTORY::NODE_TYPE_SETS:
       m_itemType = "sets";
       break;

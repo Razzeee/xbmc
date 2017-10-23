@@ -40,6 +40,7 @@ CQueryParams::CQueryParams()
   m_idAlbum = -1;
   m_idSet = -1;
   m_idTag = -1;
+  m_idMpaa = -1;
 }
 
 void CQueryParams::SetQueryParam(NODE_TYPE NodeType, const std::string& strNodeName)
@@ -61,6 +62,9 @@ void CQueryParams::SetQueryParam(NODE_TYPE NodeType, const std::string& strNodeN
     break;
   case NODE_TYPE_COUNTRY:
     m_idCountry = idDb;
+    break;
+  case NODE_TYPE_MPAA:
+    m_idMpaa = idDb;
     break;
   case NODE_TYPE_YEAR:
     m_idYear = idDb;

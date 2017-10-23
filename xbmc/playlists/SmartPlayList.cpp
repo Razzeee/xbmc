@@ -1483,3 +1483,10 @@ CDatabaseQueryRuleCombination *CSmartPlaylist::CreateCombination() const
 {
   return new CSmartPlaylistRuleCombination();
 }
+
+CSmartPlaylistRuleCombination &CSmartPlaylist::GetRuleCombination()
+{
+  return m_ruleCombination;
+}
+
+

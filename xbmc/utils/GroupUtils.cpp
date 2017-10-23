@@ -131,6 +131,10 @@ bool GroupUtils::Group(GroupBy groupBy, const std::string &baseDir, const CFileI
         if (movieInfo->GetPlayCount() > 0)
           iWatched++;
 
+        // handle mpaa
+        if (movieInfo->m_strMPAARating.length() > 0)
+          setInfo->SetMPAARating(movieInfo->m_strMPAARating);
+
         //accumulate the path for a multipath construction
         CFileItem video(movieInfo->m_basePath, false);
         if (video.IsVideo())

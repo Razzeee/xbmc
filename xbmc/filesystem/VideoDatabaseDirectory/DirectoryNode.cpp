@@ -115,6 +115,7 @@ CDirectoryNode* CDirectoryNode::CreateNode(NODE_TYPE Type, const std::string& st
   case NODE_TYPE_DIRECTOR:
   case NODE_TYPE_STUDIO:
   case NODE_TYPE_MUSICVIDEOS_ALBUM:
+  case NODE_TYPE_MPAA:
     return new CDirectoryNodeGrouped(Type, strName, pParent);
   case NODE_TYPE_TITLE_MOVIES:
     return new CDirectoryNodeTitleMovies(strName, pParent);

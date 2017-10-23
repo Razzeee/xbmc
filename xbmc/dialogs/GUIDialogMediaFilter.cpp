@@ -63,6 +63,7 @@ static const CGUIDialogMediaFilter::Filter filterList[] = {
   { "movies",       FieldActor,         20337,  SettingType::List,    "list",   "string",   CDatabaseQueryRule::OPERATOR_EQUALS },
   { "movies",       FieldDirector,      20339,  SettingType::List,    "list",   "string",   CDatabaseQueryRule::OPERATOR_EQUALS },
   { "movies",       FieldStudio,        572,    SettingType::List,    "list",   "string",   CDatabaseQueryRule::OPERATOR_EQUALS },
+  { "movies",       FieldMpaa,          20074,  SettingType::List,    "list",   "string",   CDatabaseQueryRule::OPERATOR_EQUALS },
 
   { "tvshows",      FieldTitle,         556,    SettingType::String,  "edit",   "string",   CDatabaseQueryRule::OPERATOR_CONTAINS },
   //{ "tvshows",      FieldTvShowStatus,  126,    SettingType::List,    "list",   "string",   CDatabaseQueryRule::OPERATOR_EQUALS },
@@ -75,6 +76,7 @@ static const CGUIDialogMediaFilter::Filter filterList[] = {
   { "tvshows",      FieldActor,         20337,  SettingType::List,    "list",   "string",   CDatabaseQueryRule::OPERATOR_EQUALS },
   { "tvshows",      FieldDirector,      20339,  SettingType::List,    "list",   "string",   CDatabaseQueryRule::OPERATOR_EQUALS },
   { "tvshows",      FieldStudio,        572,    SettingType::List,    "list",   "string",   CDatabaseQueryRule::OPERATOR_EQUALS },
+  { "tvshows",       FieldMpaa,         20074,  SettingType::List,    "list",   "string",   CDatabaseQueryRule::OPERATOR_EQUALS },
 
   { "episodes",     FieldTitle,         556,    SettingType::String,  "edit",   "string",   CDatabaseQueryRule::OPERATOR_CONTAINS },
   { "episodes",     FieldRating,        563,    SettingType::Number,  "range",  "number",   CDatabaseQueryRule::OPERATOR_BETWEEN },
@@ -664,6 +666,8 @@ int CGUIDialogMediaFilter::GetItems(const Filter &filter, std::vector<std::strin
       videodb.GetMusicVideoAlbumsNav(m_dbUrl->ToString(), selectItems, -1, dbfilter, countOnly);
     else if (filter.field == FieldTag)
       videodb.GetTagsNav(m_dbUrl->ToString(), selectItems, type, dbfilter, countOnly);
+    else if (filter.field == FieldMpaa)
+      videodb.GetMpaaNav(m_dbUrl->ToString(), selectItems, type, dbfilter);
   }
   else if (m_mediaType == "artists" || m_mediaType == "albums" || m_mediaType == "songs")
   {

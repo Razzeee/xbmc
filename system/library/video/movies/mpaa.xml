@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<node order="2" type="filter">
+	<label>20074</label>
+	<icon>DefaultGenre.png</icon>
+	<content>movies</content>
+	<group>mpaa</group>
+</node>

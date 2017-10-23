@@ -189,6 +189,8 @@ bool CVideoDatabaseDirectory::GetLabel(const std::string& strDirectory, std::str
       strLabel = g_localizeStrings.Get(135); break;
     case NODE_TYPE_COUNTRY: // Countries
       strLabel = g_localizeStrings.Get(20451); break;
+    case NODE_TYPE_MPAA:
+      strLabel = g_localizeStrings.Get(20074); break;
     case NODE_TYPE_YEAR: // Year
       strLabel = g_localizeStrings.Get(562); break;
     case NODE_TYPE_DIRECTOR: // Director
@@ -257,6 +259,8 @@ std::string CVideoDatabaseDirectory::GetIcon(const std::string &strDirectory)
   case NODE_TYPE_ACTOR: // Actor
     return "DefaultActor.png";
   case NODE_TYPE_GENRE: // Genres
+    return "DefaultGenre.png";
+  case NODE_TYPE_MPAA: // MPAA
     return "DefaultGenre.png";
   case NODE_TYPE_COUNTRY: // Countries
     return "DefaultCountry.png";

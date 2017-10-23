@@ -148,6 +148,7 @@ CGUIViewStateWindowVideoNav::CGUIViewStateWindowVideoNav(const CFileItemList& it
     case NODE_TYPE_GENRE:
     case NODE_TYPE_COUNTRY:
     case NODE_TYPE_STUDIO:
+    case NODE_TYPE_MPAA:
       {
         AddSortMethod(SortByLabel, 551, LABEL_MASKS("%T", "%R", "%L", ""));  // Title, Rating | Label, empty
         SetSortMethod(SortByLabel);

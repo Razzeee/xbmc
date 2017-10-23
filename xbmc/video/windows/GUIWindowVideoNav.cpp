@@ -424,8 +424,8 @@ bool CGUIWindowVideoNav::GetDirectory(const std::string &strDirectory, CFileItem
       }
 
       if (node == VIDEODATABASEDIRECTORY::NODE_TYPE_EPISODES ||
-          node == NODE_TYPE_SEASONS                          ||
-          node == NODE_TYPE_RECENTLY_ADDED_EPISODES)
+        node == NODE_TYPE_SEASONS ||
+        node == NODE_TYPE_RECENTLY_ADDED_EPISODES)
       {
         CLog::Log(LOGDEBUG, "WindowVideoNav::GetDirectory");
         // grab the show thumb
@@ -486,7 +486,7 @@ bool CGUIWindowVideoNav::GetDirectory(const std::string &strDirectory, CFileItem
           items.SetContent("seasons");
       }
       else if (node == NODE_TYPE_TITLE_MOVIES ||
-               node == NODE_TYPE_RECENTLY_ADDED_MOVIES)
+        node == NODE_TYPE_RECENTLY_ADDED_MOVIES)
       {
         if (params.GetSetId() > 0)
         {
@@ -502,15 +502,17 @@ bool CGUIWindowVideoNav::GetDirectory(const std::string &strDirectory, CFileItem
         items.SetContent("movies");
       }
       else if (node == NODE_TYPE_TITLE_TVSHOWS ||
-               node == NODE_TYPE_INPROGRESS_TVSHOWS)
+        node == NODE_TYPE_INPROGRESS_TVSHOWS)
         items.SetContent("tvshows");
       else if (node == NODE_TYPE_TITLE_MUSICVIDEOS ||
-               node == NODE_TYPE_RECENTLY_ADDED_MUSICVIDEOS)
+        node == NODE_TYPE_RECENTLY_ADDED_MUSICVIDEOS)
         items.SetContent("musicvideos");
       else if (node == NODE_TYPE_GENRE)
         items.SetContent("genres");
       else if (node == NODE_TYPE_COUNTRY)
         items.SetContent("countries");
+      else if (node == NODE_TYPE_MPAA)
+        items.SetContent("mpaa");
       else if (node == NODE_TYPE_ACTOR)
       {
         if (params.GetContentType() == VIDEODB_CONTENT_MUSICVIDEOS)

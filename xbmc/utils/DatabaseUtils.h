@@ -95,6 +95,7 @@ typedef enum {
   FieldTvShowStatus,
   FieldVotes,
   FieldDirector,
+  FieldMpaa,
   FieldActor,
   FieldStudio,
   FieldCountry,

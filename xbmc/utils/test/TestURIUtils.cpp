@@ -124,7 +124,7 @@ TEST_F(TestURIUtils, Split)
 
   std::string varpathOptional, varfileOptional;
 
-  URIUtils::Split("/path/to/movie.avi?showinfo=true", varpathOptional, varfileOptional);
+  URIUtils::Split("videodb://path/to/movie.avi?showinfo=true", varpathOptional, varfileOptional);
   EXPECT_STREQ(refpath.c_str(), varpathOptional.c_str());
   EXPECT_STREQ(reffile.c_str(), varfileOptional.c_str());
 }

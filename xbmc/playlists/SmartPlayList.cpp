@@ -146,6 +146,7 @@ static const group groups[] = { { "",           FieldUnknown,   false,    571 },
                                 { "artists",    FieldArtist,    false,    133 },
                                 { "albums",     FieldAlbum,     false,    132 },
                                 { "tags",       FieldTag,       false,  20459 },
+                                { "mpaarating",       FieldMpaa,       false,  20074 },
                               };
 
 static const size_t NUM_GROUPS = sizeof(groups) / sizeof(group);

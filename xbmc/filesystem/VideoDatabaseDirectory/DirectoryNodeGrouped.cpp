@@ -100,7 +100,7 @@ std::string CDirectoryNodeGrouped::GetContentType(const CQueryParams &params) co
     case NODE_TYPE_YEAR:
       return "years";
     case NODE_TYPE_MPAA:
-      return "mpaa";
+      return "mpaarating";
     case NODE_TYPE_ACTOR:
       if ((VIDEODB_CONTENT_TYPE)params.GetContentType() == VIDEODB_CONTENT_MUSICVIDEOS)
         return "artists";

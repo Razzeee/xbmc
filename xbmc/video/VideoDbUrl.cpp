@@ -130,7 +130,7 @@ bool CVideoDbUrl::parse()
       break;
 
     case VIDEODATABASEDIRECTORY::NODE_TYPE_MPAA:
-      m_itemType = "mpaa";
+      m_itemType = "mpaarating";
       break;
 
     case VIDEODATABASEDIRECTORY::NODE_TYPE_SETS:

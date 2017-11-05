@@ -76,7 +76,7 @@ static const CGUIDialogMediaFilter::Filter filterList[] = {
   { "tvshows",      FieldActor,         20337,  SettingType::List,    "list",   "string",   CDatabaseQueryRule::OPERATOR_EQUALS },
   { "tvshows",      FieldDirector,      20339,  SettingType::List,    "list",   "string",   CDatabaseQueryRule::OPERATOR_EQUALS },
   { "tvshows",      FieldStudio,        572,    SettingType::List,    "list",   "string",   CDatabaseQueryRule::OPERATOR_EQUALS },
-  { "tvshows",       FieldMpaa,         20074,  SettingType::List,    "list",   "string",   CDatabaseQueryRule::OPERATOR_EQUALS },
+  { "tvshows",      FieldMpaa,          20074,  SettingType::List,    "list",   "string",   CDatabaseQueryRule::OPERATOR_EQUALS },
 
   { "episodes",     FieldTitle,         556,    SettingType::String,  "edit",   "string",   CDatabaseQueryRule::OPERATOR_CONTAINS },
   { "episodes",     FieldRating,        563,    SettingType::Number,  "range",  "number",   CDatabaseQueryRule::OPERATOR_BETWEEN },

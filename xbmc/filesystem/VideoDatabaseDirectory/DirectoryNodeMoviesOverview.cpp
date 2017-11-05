@@ -37,7 +37,7 @@ Node MovieChildren[] = {
                         { NODE_TYPE_SETS,         "sets",       20434 },
                         { NODE_TYPE_COUNTRY,      "countries",  20451 },
                         { NODE_TYPE_TAGS,         "tags",       20459 },
-                        { NODE_TYPE_MPAA,         "mpaa",       20074 },
+                        { NODE_TYPE_MPAA,         "mpaarating",       20074 },
                        };
 
 CDirectoryNodeMoviesOverview::CDirectoryNodeMoviesOverview(const std::string& strName, CDirectoryNode* pParent)

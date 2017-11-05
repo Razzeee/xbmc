@@ -627,6 +627,7 @@ std::vector<Field> CSmartPlaylistRule::GetGroups(const std::string &type)
     groups.push_back(FieldStudio);
     groups.push_back(FieldCountry);
     groups.push_back(FieldTag);
+    groups.push_back(FieldMpaa);
   }
   else if (type == "tvshows")
   {
@@ -636,6 +637,7 @@ std::vector<Field> CSmartPlaylistRule::GetGroups(const std::string &type)
     groups.push_back(FieldDirector);
     groups.push_back(FieldStudio);
     groups.push_back(FieldTag);
+    groups.push_back(FieldMpaa);
   }
   else if (type == "musicvideos")
   {

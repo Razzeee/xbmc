@@ -512,7 +512,7 @@ bool CGUIWindowVideoNav::GetDirectory(const std::string &strDirectory, CFileItem
       else if (node == NODE_TYPE_COUNTRY)
         items.SetContent("countries");
       else if (node == NODE_TYPE_MPAA)
-        items.SetContent("mpaa");
+        items.SetContent("mpaarating");
       else if (node == NODE_TYPE_ACTOR)
       {
         if (params.GetContentType() == VIDEODB_CONTENT_MUSICVIDEOS)

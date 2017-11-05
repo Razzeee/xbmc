@@ -6777,7 +6777,7 @@ bool CVideoDatabase::GetItems(const std::string &strBaseDir, VIDEODB_CONTENT_TYP
     return GetSeasonsNav(strBaseDir, items);
   else if (StringUtils::EqualsNoCase(itemType, "genres"))
     return GetGenresNav(strBaseDir, items, mediaType, filter);
-  else if (StringUtils::EqualsNoCase(itemType, "mpaa"))
+  else if (StringUtils::EqualsNoCase(itemType, "mpaarating"))
     return GetMpaaNav(strBaseDir, items, mediaType, filter);
   else if (StringUtils::EqualsNoCase(itemType, "years"))
     return GetYearsNav(strBaseDir, items, mediaType, filter);
@@ -6799,7 +6799,6 @@ bool CVideoDatabase::GetItems(const std::string &strBaseDir, VIDEODB_CONTENT_TYP
     return GetActorsNav(strBaseDir, items, mediaType, filter);
   else if (StringUtils::EqualsNoCase(itemType, "albums") && mediaType == VIDEODB_CONTENT_MUSICVIDEOS)
     return GetMusicVideoAlbumsNav(strBaseDir, items, -1, filter);
-
 
   return false;
 }

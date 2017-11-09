@@ -82,7 +82,7 @@ static const translateField fields[] = {
   { "userrating",        FieldUserRating,              CDatabaseQueryRule::REAL_FIELD,     CSmartPlaylistRule::ValidateMyRating, false, 38018 },
   { "votes",             FieldVotes,                   CDatabaseQueryRule::REAL_FIELD,     StringValidation::IsPositiveInteger,  false, 205 },
   { "top250",            FieldTop250,                  CDatabaseQueryRule::NUMERIC_FIELD,  NULL,                                 false, 13409 },
-  { "mpaarating",        FieldMPAA,                    CDatabaseQueryRule::TEXT_FIELD,     NULL,                                 false, 20074 },
+  { "mpaa",              FieldMPAA,                    CDatabaseQueryRule::TEXT_FIELD,     NULL,                                 false, 20074 },
   { "dateadded",         FieldDateAdded,               CDatabaseQueryRule::DATE_FIELD,     NULL,                                 false, 570 },
   { "genre",             FieldGenre,                   CDatabaseQueryRule::TEXT_FIELD,     NULL,                                 true,  515 },
   { "plot",              FieldPlot,                    CDatabaseQueryRule::TEXT_FIELD,     NULL,                                 false, 207 },
@@ -146,7 +146,7 @@ static const group groups[] = { { "",           FieldUnknown,   false,    571 },
                                 { "artists",    FieldArtist,    false,    133 },
                                 { "albums",     FieldAlbum,     false,    132 },
                                 { "tags",       FieldTag,       false,  20459 },
-                                { "mpaarating",       FieldMpaa,       false,  20074 },
+                                { "mpaa",       FieldMpaa,       false,  20074 },
                               };
 
 static const size_t NUM_GROUPS = sizeof(groups) / sizeof(group);
